@@ -8,10 +8,10 @@
 Determines whether the type V is allowed as the scalar type in a
 Dual. By default, only `<:Real` types are allowed.
 """
-can_dual(::Type{<:Real}) = true
+can_dual(::Type{<:AbstractFloat}) = true
 can_dual(::Type) = false
 
-struct Dual{T,V,N} <: Real
+struct Dual{T,V,N} <: AbstractFloat
     value::V
     partials::Partials{N,V}
     function Dual{T, V, N}(value::V, partials::Partials{N, V}) where {T, V, N}
