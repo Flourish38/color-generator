@@ -1,0 +1,4 @@
+name = "color_generator"
+uuid = "93079ef8-35ce-469d-9fa3-9a32347e9718"
+authors = ["brsan <brsandvik@gmail.com>"]
+version = "0.1.0"
