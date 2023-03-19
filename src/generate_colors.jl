@@ -9,4 +9,4 @@ minimum_iterations = 1000000
 minimum_iterations_since_last_improvement = 100000
 
 mc_colors = mc_distinguishable_colors(number_of_colors_generated, discord_background_colors; its=minimum_iterations, thresh=minimum_iterations_since_last_improvement)
-println(collect(map(x -> push!("#", x), hex.(mc_colors))))
+println(collect(map(x -> "#" * x, hex.(mc_colors))))
