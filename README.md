@@ -1,8 +1,8 @@
 # color-generator
 Using various techniques to generate visually distinct colors
 
-For first time setup, run `julia` (download [here](https://github.com/JuliaLang/juliaup), recommended you use `juliaup add release; julia default release`) and then do `] instantiate`. (Remember, you use Ctrl+D to exit the `julia` REPL!)
-In order to generate colors, just run `julia src/color_generator.jl`, or `julia` and then `include("src/color_generator.jl")`.
+For first time setup, run `julia` (download [here](https://github.com/JuliaLang/juliaup), recommended you use `juliaup add release; julia default release`) and then do `] activate .`, and then `] instantiate`. (Remember, you use Ctrl+D to exit the `julia` REPL!)
+In order to generate colors, just run `julia src/generate_colors.jl`, or `julia` and then `include("src/generate_colors.jl")`.
 
 After a while, this will print out some number of hex codes (20 by default) that are visually distinct from all of the new discord background themes.
 If you want to preview the colors without pasting them into some color picker website, you could run the code manually in VS Code with the Julia extension.
