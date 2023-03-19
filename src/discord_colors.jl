@@ -70,3 +70,42 @@ begin
     theme_matrix
 end
 
+const A = 0.055
+const Γ = 2.4
+const X = 0.04045
+const Φ = 12.92
+
+rgb(c::Colorant) = red(c), green(c), blue(c)
+sRGB_to_linear(c::Fractional) = c <= X ? c / Φ : ((c + A)/(1 + A))^Γ
+linear_to_sRGB(c::Fractional) = clamp(c <= X/Φ ? Φ * c : (1 + A)c^(1 / Γ) - A, 0, 1)
+
+function overlay_color(base::RGB, overlay::RGBA)
+    α = alpha(overlay)
+    RGB([α*color_overlay + (1-α)*color_base for (color_base, color_overlay) in zip(rgb(base), rgb(overlay))]...)
+end
+@inline overlay_color(base::Color, overlay::RGBA) = overlay_color(RGB(base), overlay)
+@inline overlay_color(base::Color, overlay::ColorAlpha) = overlay_color(base, RGBA(overlay))
+
+
+
+dark_gradient_theme_overlay = RGBA(0, 0, 0, 0.8)
+light_gradient_theme_overlay = RGBA(1, 1, 1, 0.9)
+
+darkened_gradient_themes = [[overlay_color(color, dark_gradient_theme_overlay) for color in theme] for theme in dark_gradient_themes]
+lightened_gradient_themes = [[overlay_color(color, light_gradient_theme_overlay) for color in theme] for theme in light_gradient_themes]
+
+begin
+    theme_matrix = fill(HSL(colorant"#1e1e1e"), length(gradient_themes) + 2, maximum(length.(gradient_themes)))
+    theme_matrix[1, 1] = dark_background
+    theme_matrix[1, 2] = dark_member_background
+    theme_matrix[2, 1] = light_background
+    theme_matrix[2, 2] = light_member_background
+    for (i, theme) in enumerate(vcat(darkened_gradient_themes, lightened_gradient_themes))
+        for (j, col) in enumerate(theme)
+            theme_matrix[i+2, j] = col
+        end
+    end
+    theme_matrix
+end
+
+discord_background_colors = vcat([dark_background, dark_member_background, light_background, light_member_background], lightened_gradient_themes..., darkened_gradient_themes...)

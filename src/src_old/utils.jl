@@ -92,7 +92,7 @@ end
 
 function score(col_raw::Matrix{<:AbstractFloat}; seed=nothing)
     cols = [RGB(col_raw[i,1], col_raw[i,2], col_raw[i,3]) for i in 1:size(col_raw, 1)]
-    return score(cols; seed=seed)
+    return score(cols, seed)
 end
 
 function align(base::AbstractArray{<:T, N}, mixed::AbstractArray{<:T, N}, dist_metric) where {T, N}

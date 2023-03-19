@@ -1,4 +1,4 @@
-@time begin
+begin
     using Colors, ForwardDiff, DataStructures, FixedPointNumbers
     using BenchmarkTools, ProgressMeter
     include("utils.jl")
@@ -7,7 +7,7 @@ end
 
 function mc_distinguishable_colors(n, seed=nothing; its=-1, thresh=-1)
     ϵ = 1e-9
-    isnothing(seed) || (seed = RGB{Float64}.([clamp.(f.(seed), ϵ, 1) for f in (red, green, blue)]...))
+    isnothing(seed) || (seed = RGB{Float64}.([clamp.(f.(RGB.(seed)), ϵ, 1) for f in (red, green, blue)]...))
     #start = distinguishable_colors(n, isnothing(seed) ? RGB{Float64}[] : seed; dropseed=true)
     #vars = Matrix{Float64}(undef, n, 3)
     #=
@@ -17,7 +17,7 @@ function mc_distinguishable_colors(n, seed=nothing; its=-1, thresh=-1)
         vars[i,3] = blue(start[i])
     end
     =#
-    vars = rand(0.0:eps(N0f8):1.1, n, 3)
+    vars = rand(0.0:eps(N0f8):1.001, n, 3)
     vars = clamp.(vars, ϵ, 1)
 
     scores = get_scores(vars; seed=seed)
@@ -38,9 +38,9 @@ function mc_distinguishable_colors(n, seed=nothing; its=-1, thresh=-1)
         vars[i] = clamp(vars[i], ϵ, 1)
         update_scores!(scores, vars, i[1]; seed=seed)
         s = evaluate(scores, vars, Val(true); seed=seed)
-        if s > best_score
+        if s > best_score && score(vars; seed=seed) > best_score  # Stupid bug. Shouldn't need to calculate full score. Doesn't really impact performance though so /shrug
             best = deepcopy(vars)
-            best_score = s
+            best_score = score(vars; seed=seed)
             last_improvement = it
         end
         ProgressMeter.next!(p; showvalues = ((:score, best_score), (:improved, last_improvement)))
