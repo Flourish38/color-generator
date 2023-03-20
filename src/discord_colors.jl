@@ -1,6 +1,6 @@
 using Colors
 
-dark_background = HSL(223, 0.067, 0.235)
+dark_background = HSL(223, 0.067, 0.206)
 light_background = HSL(0, 0, 1.)
 
 dark_member_background = HSL(220, 0.065, 0.18)
@@ -10,7 +10,7 @@ begin
     chroma_glow = [HSL(183, 0.863, 0.402),
         HSL(258, 0.898, 0.463),
         HSL(298, 0.909, 0.343),
-        HSL(265, 1., 0.663),
+        HSL(265, 1.0, 0.663),
         HSL(207, 0.755, 0.504)]
     citrus_sherbert = [HSL(40, 0.887, 0.582),
         HSL(18, 0.815, 0.639)]
@@ -109,3 +109,49 @@ begin
 end
 
 discord_background_colors = vcat([dark_background, dark_member_background, light_background, light_member_background], lightened_gradient_themes..., darkened_gradient_themes...)
+
+brand_500 = HSL(235, 0.856, 0.647)
+yellow_300 = HSL(40, 0.864, 0.569)
+red_400 = HSL(359, 0.873, 0.598)
+brand_360 = HSL(235, 0.861, 0.775)
+primary_900 = HSL(0, 0, 0.008)
+primary_500 = HSL(228, 0.06, 0.325)
+primary_400 = HSL(223, 0.058, 0.529)
+
+begin
+    ephemeral_message_overlay = HSLA(brand_500, 0.05)
+    ephemeral_message_hover_overlay = HSLA(brand_500, 0.1)
+    mentioned_message_overlay = HSLA(yellow_300, 0.1)
+    mentioned_message_hover_overlay_dark = HSLA(yellow_300, 0.08)
+    mentioned_message_hover_overlay_light = HSLA(yellow_300, 0.2)
+    automod_message_overlay = HSLA(red_400, 0.05)
+    automod_message_hover_overlay = HSLA(red_400, 0.1)
+    highlight_message_overlay_dark = HSLA(brand_360, 0.08) 
+    highlight_message_overlay_light = HSLA(brand_360, 0.1) 
+    highlight_message_hover_overlay_dark = HSLA(brand_360, 0.06)
+    highlight_message_hover_overlay_light = HSLA(brand_360, 0.2)
+    message_hover_overlay_dark = HSLA(primary_900, 0.06)
+    message_hover_overlay_light = HSLA(primary_900, 0.03)
+
+    member_hover_overlay_dark = HSLA(primary_500, 0.3)
+    member_selected_overlay_dark = HSLA(primary_500, 0.6)
+
+    member_hover_overlay_light = HSLA(primary_400, 0.16)
+    member_selected_overlay_light = HSLA(primary_400, 0.24)
+
+    dark_message_overlays = [ephemeral_message_overlay, ephemeral_message_hover_overlay, mentioned_message_overlay, mentioned_message_hover_overlay_dark, automod_message_overlay, automod_message_hover_overlay,
+        highlight_message_overlay_dark, highlight_message_hover_overlay_dark, message_hover_overlay_dark]
+    dark_member_overlays = [member_hover_overlay_dark, member_selected_overlay_dark]
+    dark_background_overlays = vcat(dark_message_overlays, dark_member_overlays)
+
+    light_message_overlays = [ephemeral_message_overlay, ephemeral_message_hover_overlay, mentioned_message_overlay, mentioned_message_hover_overlay_light, automod_message_overlay, automod_message_hover_overlay,
+        highlight_message_overlay_light, highlight_message_hover_overlay_light, message_hover_overlay_light]
+    light_member_overlays = [member_hover_overlay_light, member_selected_overlay_light]
+    light_background_overlays = vcat(light_message_overlays, light_member_overlays)
+end
+
+role_menu_background_dark = HSL(220, 0.081, 0.073)
+role_menu_hover = HSL(235, 0.514, 0.524)
+
+base_dark_theme_colors = vcat(dark_background, overlay_color.(dark_background, dark_message_overlays), dark_member_background, overlay_color.(dark_member_background, dark_member_overlays), role_menu_background_dark, role_menu_hover)
+base_light_theme_colors = vcat(light_background, overlay_color.(light_background, light_message_overlays), light_member_background, overlay_color.(light_member_background, light_member_overlays), role_menu_hover)

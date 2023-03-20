@@ -7,7 +7,7 @@ end
 
 function mc_distinguishable_colors(n, seed=nothing; its=-1, thresh=-1)
     ϵ = 1e-9
-    isnothing(seed) || (seed = RGB{Float64}.([clamp.(f.(RGB.(seed)), ϵ, 1) for f in (red, green, blue)]...))
+    isnothing(seed) || (seed = RGB{Float64}.([clamp.(f.(RGB{N0f8}.(seed)), ϵ, 1) for f in (red, green, blue)]...))
     #start = distinguishable_colors(n, isnothing(seed) ? RGB{Float64}[] : seed; dropseed=true)
     #vars = Matrix{Float64}(undef, n, 3)
     #=
