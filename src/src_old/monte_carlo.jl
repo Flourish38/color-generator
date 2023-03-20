@@ -45,5 +45,5 @@ function mc_distinguishable_colors(n, seed=nothing; its=-1, thresh=-1)
         end
         ProgressMeter.next!(p; showvalues = ((:score, best_score), (:improved, last_improvement)))
     end
-    return [RGB{N0f8}(best[i, 1], best[i, 2], best[i, 3]) for i in 1:n]
+    return sort([RGB{N0f8}(best[i, 1], best[i, 2], best[i, 3]) for i in 1:n], by = x -> LCHab(x).h)
 end
