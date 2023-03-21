@@ -241,15 +241,24 @@ function generate_color_dist_array(all_discord_colors)
     return discord_color_dist_array
 end
 
+# You honestly should only use dist_to_discord_color for RGB{N0f8}s anyways, so these are not included by default.
+#=
+function color_to_index(color::RGB{N0f8})
+    CartesianIndex(color.r.i + 1, color.g.i + 1, color.b.i + 1)
+end
+color_to_index(color::Color) = color_to_index(RGB{N0f8}(color))
+=#
+
 let 
-    discord_color_dist_array = isfile("discord_color_dist_array.bson") ? 
+    discord_color_dist_array::Array{Float64, 3} = isfile("discord_color_dist_array.bson") ? 
         BSON.load("discord_color_dist_array.bson")[:discord_color_dist_array] :
         generate_color_dist_array(all_discord_colors)
 
     global dist_to_discord_color
-    color_to_index(color::RGB{N0f8}) = CartesianIndex(color.r.i + 1, color.g.i + 1, color.b.i + 1)
-    color_to_index(color::Color) = color_to_index(RGB{N0f8}(color))
-    dist_to_discord_color(color::Color) = discord_color_dist_array[color_to_index(color)]
+    function dist_to_discord_color(color::RGB{N0f8})::Float64
+        discord_color_dist_array[color.r.i+1, color.g.i+1, color.b.i+1]
+    end
+    #dist_to_discord_color(color::Color)::Float64 = discord_color_dist_array[color_to_index(color)]
 end
 
 #discord_color_dist_array_extracted = [dist_to_discord_color(RGB{N0f8}(r, g, b)) for r in zero(N0f8):eps(N0f8):one(N0f8), g in zero(N0f8):eps(N0f8):one(N0f8), b in zero(N0f8):eps(N0f8):one(N0f8)]
