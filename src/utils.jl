@@ -1,6 +1,5 @@
 @time begin
     include("discord_colors.jl")
-    using BenchmarkTools
 end
 
 function min_dist_to_discord_color(colors::Vector{RGB{N0f8}})::Float64
@@ -72,6 +71,7 @@ rand_color()::RGB{N0f8} = RGB{N0f8}(rand(N0f8), rand(N0f8), rand(N0f8))
 
 #=
 begin
+    using BenchmarkTools
     function run_bench()
         colors = [rand_color() for _ in 1:50]
         scores = get_scores(colors)
