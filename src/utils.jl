@@ -1,6 +1,4 @@
-@time begin
-    include("discord_colors.jl")
-end
+include("discord_colors.jl")
 
 function min_dist_to_discord_color(colors::Vector{RGB{N0f8}})::Float64
     return minimum(dist_to_discord_color, colors)
@@ -65,6 +63,12 @@ end
         end
         scores[updated_index] = (updated_diff, updated_diff_i)
     end
+    return
+end
+
+@views function find_min_score(scores::Vector{Tuple{Float64, Int}})::Tuple{Float64, Int}
+    (min_score, i) = findmin(first, scores)
+    return (min_score, rand((i, scores[i][2])))
 end
 
 rand_color()::RGB{N0f8} = RGB{N0f8}(rand(N0f8), rand(N0f8), rand(N0f8))
@@ -73,15 +77,19 @@ rand_color()::RGB{N0f8} = RGB{N0f8}(rand(N0f8), rand(N0f8), rand(N0f8))
 begin
     using BenchmarkTools
     function run_bench()
+        
         colors = [rand_color() for _ in 1:50]
         scores = get_scores(colors)
+        #=
         @benchmark update_scores!(scores, colors, updated_index) setup = (begin
             colors = $colors
             scores = $scores
             updated_index = rand(eachindex(colors))
             colors[updated_index] = rand_color()
         end)
+        =#
+        @benchmark find_min_score(scores) setup = (scores = $scores)
     end
     run_bench()
 end
-=#
+# =#
