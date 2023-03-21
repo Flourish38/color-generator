@@ -23,3 +23,6 @@ docs/site/
 # environment.
 #Manifest.toml
 # Pretty sure I actually should commit the manifest because I need my custom version of ForwardDiff
+
+
+*.bson

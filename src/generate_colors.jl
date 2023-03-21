@@ -1,6 +1,10 @@
 @time begin
     include("src_old/monte_carlo.jl")
     include("discord_colors.jl")
+    darkened_gradient_themes = [[overlay_color(color, dark_gradient_theme_overlay) for color in theme] for theme in dark_gradient_themes]
+    lightened_gradient_themes = [[overlay_color(color, light_gradient_theme_overlay) for color in theme] for theme in light_gradient_themes]
+    
+    discord_background_colors = vcat([dark_background, dark_member_background, light_background, light_member_background], lightened_gradient_themes..., darkened_gradient_themes...)
 end
 
 # Feel free to edit these numbers!

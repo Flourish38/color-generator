@@ -1,4 +1,4 @@
-using Colors
+using Colors, IterTools, FixedPointNumbers, ProgressMeter, BSON
 
 dark_background = HSL(223, 0.067, 0.206)
 light_background = HSL(0, 0, 1.)
@@ -57,17 +57,6 @@ begin
     gradient_themes = [chroma_glow, citrus_sherbert, cotton_candy, crimson_moon, desert_khaki, dusk, easter_egg, forest, hanami, lofi_vibes, mars, midnight_blurple, mint_apple, retro_raincloud, sunrise, sunset, under_the_sea]
     dark_gradient_themes = [chroma_glow, crimson_moon, dusk, forest, mars, midnight_blurple, sunset, under_the_sea]
     light_gradient_themes = [citrus_sherbert, cotton_candy, desert_khaki, easter_egg, hanami, lofi_vibes, mint_apple, retro_raincloud, sunrise]
-    theme_matrix = fill(HSL(colorant"#1e1e1e"), length(gradient_themes) + 2, maximum(length.(gradient_themes)))
-    theme_matrix[1, 1] = dark_background
-    theme_matrix[1, 2] = dark_member_background
-    theme_matrix[2, 1] = light_background
-    theme_matrix[2, 2] = light_member_background
-    for (i, theme) in enumerate(gradient_themes)
-        for (j, col) in enumerate(theme)
-            theme_matrix[i+2, j] = col
-        end
-    end
-    theme_matrix
 end
 
 const A = 0.055
@@ -81,7 +70,7 @@ linear_to_sRGB(c::Fractional) = clamp(c <= X/Φ ? Φ * c : (1 + A)c^(1 / Γ) - A
 
 function overlay_color(base::RGB, overlay::RGBA)
     α = alpha(overlay)
-    RGB([α*color_overlay + (1-α)*color_base for (color_base, color_overlay) in zip(rgb(base), rgb(overlay))]...)
+    RGB(α*overlay.r + (1-α)*base.r, α*overlay.g + (1-α)*base.g, α*overlay.b + (1-α)*base.b)
 end
 @inline overlay_color(base::Color, overlay::RGBA) = overlay_color(RGB(base), overlay)
 @inline overlay_color(base::Color, overlay::ColorAlpha) = overlay_color(base, RGBA(overlay))
@@ -91,24 +80,6 @@ end
 dark_gradient_theme_overlay = RGBA(0, 0, 0, 0.8)
 light_gradient_theme_overlay = RGBA(1, 1, 1, 0.9)
 
-darkened_gradient_themes = [[overlay_color(color, dark_gradient_theme_overlay) for color in theme] for theme in dark_gradient_themes]
-lightened_gradient_themes = [[overlay_color(color, light_gradient_theme_overlay) for color in theme] for theme in light_gradient_themes]
-
-begin
-    theme_matrix = fill(HSL(colorant"#1e1e1e"), length(gradient_themes) + 2, maximum(length.(gradient_themes)))
-    theme_matrix[1, 1] = dark_background
-    theme_matrix[1, 2] = dark_member_background
-    theme_matrix[2, 1] = light_background
-    theme_matrix[2, 2] = light_member_background
-    for (i, theme) in enumerate(vcat(darkened_gradient_themes, lightened_gradient_themes))
-        for (j, col) in enumerate(theme)
-            theme_matrix[i+2, j] = col
-        end
-    end
-    theme_matrix
-end
-
-discord_background_colors = vcat([dark_background, dark_member_background, light_background, light_member_background], lightened_gradient_themes..., darkened_gradient_themes...)
 
 brand_500 = HSL(235, 0.856, 0.647)
 yellow_300 = HSL(40, 0.864, 0.569)
@@ -153,5 +124,135 @@ end
 role_menu_background_dark = HSL(220, 0.081, 0.073)
 role_menu_hover = HSL(235, 0.514, 0.524)
 
-base_dark_theme_colors = vcat(dark_background, overlay_color.(dark_background, dark_message_overlays), dark_member_background, overlay_color.(dark_member_background, dark_member_overlays), role_menu_background_dark, role_menu_hover)
-base_light_theme_colors = vcat(light_background, overlay_color.(light_background, light_message_overlays), light_member_background, overlay_color.(light_member_background, light_member_overlays), role_menu_hover)
+#base_dark_theme_colors = vcat(dark_background, overlay_color.(dark_background, dark_message_overlays), dark_member_background, overlay_color.(dark_member_background, dark_member_overlays), role_menu_background_dark, role_menu_hover)
+#base_light_theme_colors = vcat(light_background, overlay_color.(light_background, light_message_overlays), light_member_background, overlay_color.(light_member_background, light_member_overlays), role_menu_hover)
+
+function get_all_gradient_colors(gradient_themes, gradient_theme_overlay)
+    all_gradient_colors = Set{RGB{N0f8}}()
+    for theme in gradient_themes
+        for (color_a, color_b) in partition(theme, 2, 1)
+            color_a = RGB(color_a)
+            color_b = RGB(color_b)
+            length = 2
+            new_colors = true
+            while new_colors
+                length *= 2
+                new_colors = false
+                color_range = RGB{N0f8}.(overlay_color.(range(color_a, color_b; length=length), gradient_theme_overlay))
+                for color in color_range
+                    if !(color in all_gradient_colors)
+                        new_colors = true
+                        push!(all_gradient_colors, color)
+                    end
+                end
+            end
+        end
+    end
+    all_gradient_colors
+end
+
+#all_darkened_gradient_colors = get_all_gradient_colors(dark_gradient_themes, dark_gradient_theme_overlay)
+
+function modify_all_gradient_colors(all_gradient_colors, background_overlays)
+    all_modified_gradient_colors = Set{RGB{N0f8}}()
+    for color in all_gradient_colors
+        union!(all_modified_gradient_colors, RGB{N0f8}.(overlay_color.(color, background_overlays)))
+    end
+    all_modified_gradient_colors
+end
+
+#all_darkened_gradient_colors_modified = union(all_darkened_gradient_colors, modify_all_gradient_colors(all_darkened_gradient_colors, dark_background_overlays))
+
+sat_multiply(col::HSL, sat) = HSL(col.h, col.s * sat, col.l)
+sat_multiply(col::HSLA, sat) = HSLA(col.h, col.s * sat, col.l, col.alpha)
+
+function all_sat_gradient_colors(gradient_themes, gradient_theme_overlay, background_overlays)
+    all_sat_gradient_colors = Set{RGB{N0f8}}()
+    for sat in 0.0:0.05:1.0
+        all_gradient_colors = get_all_gradient_colors(map.(x -> sat_multiply(x, sat), gradient_themes), gradient_theme_overlay)
+        union!(all_sat_gradient_colors, modify_all_gradient_colors(all_gradient_colors, map(x -> sat_multiply(x, sat), background_overlays)))
+        union!(all_sat_gradient_colors, all_gradient_colors)
+    end
+    all_sat_gradient_colors
+end
+
+all_darkened_sat_colors = all_sat_gradient_colors(dark_gradient_themes, dark_gradient_theme_overlay, dark_background_overlays)
+all_lightened_sat_colors = all_sat_gradient_colors(light_gradient_themes, light_gradient_theme_overlay, light_background_overlays)
+
+begin
+    all_base_sat_colors = Set{RGB{N0f8}}()
+    for sat in 0.0:0.05:1.0
+        # You might not want these, since they're only really for admin usage anyways
+        # = = =
+        push!(all_base_sat_colors, RGB{N0f8}(sat_multiply(role_menu_background_dark, sat)))
+        push!(all_base_sat_colors, RGB{N0f8}(sat_multiply(role_menu_hover, sat)))
+        # = = =#
+        sat_dark_background = sat_multiply(dark_background, sat)
+        sat_dark_member_background = sat_multiply(dark_member_background, sat)
+        sat_light_background = sat_multiply(light_background, sat)
+        sat_light_member_background = sat_multiply(light_member_background, sat)
+        union!(all_base_sat_colors, RGB{N0f8}.([sat_dark_background, sat_dark_member_background, sat_light_background, sat_light_member_background]))
+        union!(all_base_sat_colors, RGB{N0f8}.(overlay_color.(sat_dark_background, dark_message_overlays)))
+        union!(all_base_sat_colors, RGB{N0f8}.(overlay_color.(sat_dark_member_background, dark_member_overlays)))
+        union!(all_base_sat_colors, RGB{N0f8}.(overlay_color.(sat_light_background, light_message_overlays)))
+        union!(all_base_sat_colors, RGB{N0f8}.(overlay_color.(sat_light_member_background, light_member_overlays)))
+    end
+end
+
+all_discord_colors = collect(union(all_darkened_sat_colors, all_lightened_sat_colors, all_base_sat_colors)); @show length(all_discord_colors)
+
+function adjacent_colors(color::RGB{N0f8})
+    (RGB{N0f8}(color.r + r, color.g + g, color.b + b) for r in offsets, g in offsets, b in offsets if !(r == 0 && g == 0 && b == 0))
+end
+
+const offsets = (one(N0f8), zero(N0f8), eps(N0f8))
+
+function generate_color_dist_array(all_discord_colors)
+    println("Pre-computing color distance array. This will take a while, but the ETA will shrink rapidly as the computation proceeds. On my machine, it takes 10-15 minutes.")
+    discord_color_dist_array = Array{Float64}(undef, 256, 256, 256)
+    color_to_index(color::RGB{N0f8}) = CartesianIndex(color.r.i + 1, color.g.i + 1, color.b.i + 1)
+    dist_to_discord_color(color::RGB{N0f8}) = discord_color_dist_array[color_to_index(color)]
+
+    initial_discord_color = all_discord_colors[argmin((c -> sum(abs.(rgb(c) .- (0.5, 0.5, 0.5)))).(all_discord_colors))]
+    @time for r in zero(N0f8):eps(N0f8):one(N0f8), g in zero(N0f8):eps(N0f8):one(N0f8), b in zero(N0f8):eps(N0f8):one(N0f8)
+        color = RGB{N0f8}(r, g, b)
+        discord_color_dist_array[color_to_index(color)] = colordiff(color, initial_discord_color)
+    end
+    (max_distance, discord_color_index) = findmax(dist_to_discord_color.(all_discord_colors))
+    p = Progress(length(all_discord_colors); dt=1, start=1)
+    while max_distance > 0  # once every color has been finished, they will all have a distance of 0 to the closest discord color because they are the closest discord color.
+        discord_color = all_discord_colors[discord_color_index]
+        discord_color_dist_array[color_to_index(discord_color)] = 0
+        checked_colors = Set{RGB{N0f8}}((discord_color,))
+        colors_to_check = Set{RGB{N0f8}}(adjacent_colors(discord_color))
+        while !isempty(colors_to_check)
+            color = pop!(colors_to_check)
+            push!(checked_colors, color)
+            diff = colordiff(color, discord_color)
+            if diff < dist_to_discord_color(color)
+                discord_color_dist_array[color_to_index(color)] = diff
+                union!(colors_to_check, Iterators.filter(x -> !(x in checked_colors), adjacent_colors(color)))
+            end
+        end
+        next!(p)
+        (max_distance, discord_color_index) = findmax(dist_to_discord_color.(all_discord_colors))  # This is very fast, no reason to try to do fewer lookups.
+    end
+    bson("discord_color_dist_array.bson", Dict(:discord_color_dist_array => discord_color_dist_array))
+    return discord_color_dist_array
+end
+
+let 
+    discord_color_dist_array = isfile("discord_color_dist_array.bson") ? 
+        BSON.load("discord_color_dist_array.bson")[:discord_color_dist_array] :
+        generate_color_dist_array(all_discord_colors)
+
+    global dist_to_discord_color
+    color_to_index(color::RGB{N0f8}) = CartesianIndex(color.r.i + 1, color.g.i + 1, color.b.i + 1)
+    color_to_index(color::Color) = color_to_index(RGB{N0f8}(color))
+    dist_to_discord_color(color::Color) = discord_color_dist_array[color_to_index(color)]
+end
+
+#discord_color_dist_array_extracted = [dist_to_discord_color(RGB{N0f8}(r, g, b)) for r in zero(N0f8):eps(N0f8):one(N0f8), g in zero(N0f8):eps(N0f8):one(N0f8), b in zero(N0f8):eps(N0f8):one(N0f8)]
+#bson("data/discord_color_dist_array.bson", discord_color_dist_array = discord_color_dist_array_extracted)
+
+# @benchmark colordiff(a, b) setup=(a = RGB{N0f8}(rand(N0f8), rand(N0f8), rand(N0f8)); b = RGB{N0f8}(rand(N0f8), rand(N0f8), rand(N0f8)))
