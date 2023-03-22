@@ -1,4 +1,5 @@
 include("discord_colors.jl")
+using Random
 
 function min_dist_to_discord_color(colors::Vector{RGB{N0f8}})::Float64
     return minimum(dist_to_discord_color, colors)
@@ -49,37 +50,125 @@ end
             discord_diff = dist_to_discord_color(c)
             if discord_diff < new_diff
                 new_diff = discord_diff
-                new_diff_i = i
+                new_diff_i = 0  # since we add i later anyways, this is correct
             end
-            scores[i] = (new_diff, new_diff_i)
+            scores[i] = (new_diff, new_diff_i + i)
         end
     end
-    if updated_index < length(colors)
-        updated_diff, updated_diff_i = findmin(f, colors[updated_index+1:end])
-        discord_diff = dist_to_discord_color(c_updated)
-        if discord_diff < updated_diff
-            updated_diff = discord_diff
-            updated_diff_i = updated_index
-        end
-        scores[updated_index] = (updated_diff, updated_diff_i)
+    updated_diff, updated_diff_i = updated_index < length(colors) ? findmin(f, colors[updated_index+1:end]) : (Inf, 0)
+    discord_diff = dist_to_discord_color(c_updated)
+    if discord_diff < updated_diff  # if updated_index == length(colors), this will always be true
+        updated_diff = discord_diff
+        updated_diff_i = 0  # since we add updated_index later anyways, this is correct
     end
+    scores[updated_index] = (updated_diff, updated_diff_i + updated_index)
     return
 end
 
-@views function find_min_score(scores::Vector{Tuple{Float64, Int}})::Tuple{Float64, Int}
+@views function find_min_score(scores::Vector{Tuple{Float64, Int}})::Tuple{Float64, Tuple{Int, Int}}
     (min_score, i) = findmin(first, scores)
-    return (min_score, rand((i, scores[i][2])))
+    return (min_score, (i, scores[i][2]))
 end
 
 rand_color()::RGB{N0f8} = RGB{N0f8}(rand(N0f8), rand(N0f8), rand(N0f8))
 
-#=
+const nudges = (
+    (eps(N0f8), zero(N0f8), zero(N0f8)), # This group is copied 6 times so it makes up the majority of the list
+    (one(N0f8), zero(N0f8), zero(N0f8)),
+    (zero(N0f8), eps(N0f8), zero(N0f8)),
+    (zero(N0f8), one(N0f8), zero(N0f8)),
+    (zero(N0f8), zero(N0f8), eps(N0f8)),
+    (zero(N0f8), zero(N0f8), one(N0f8)),
+# = = = =  # You might not want these so here, easy to comment them out
+    (eps(N0f8), zero(N0f8), zero(N0f8)),
+    (one(N0f8), zero(N0f8), zero(N0f8)),
+    (zero(N0f8), eps(N0f8), zero(N0f8)),
+    (zero(N0f8), one(N0f8), zero(N0f8)),
+    (zero(N0f8), zero(N0f8), eps(N0f8)),
+    (zero(N0f8), zero(N0f8), one(N0f8)),
+
+    (eps(N0f8), zero(N0f8), zero(N0f8)),
+    (one(N0f8), zero(N0f8), zero(N0f8)),
+    (zero(N0f8), eps(N0f8), zero(N0f8)),
+    (zero(N0f8), one(N0f8), zero(N0f8)),
+    (zero(N0f8), zero(N0f8), eps(N0f8)),
+    (zero(N0f8), zero(N0f8), one(N0f8)),
+
+    (eps(N0f8), zero(N0f8), zero(N0f8)),
+    (one(N0f8), zero(N0f8), zero(N0f8)),
+    (zero(N0f8), eps(N0f8), zero(N0f8)),
+    (zero(N0f8), one(N0f8), zero(N0f8)),
+    (zero(N0f8), zero(N0f8), eps(N0f8)),
+    (zero(N0f8), zero(N0f8), one(N0f8)),
+
+    (eps(N0f8), zero(N0f8), zero(N0f8)),
+    (one(N0f8), zero(N0f8), zero(N0f8)),
+    (zero(N0f8), eps(N0f8), zero(N0f8)),
+    (zero(N0f8), one(N0f8), zero(N0f8)),
+    (zero(N0f8), zero(N0f8), eps(N0f8)),
+    (zero(N0f8), zero(N0f8), one(N0f8)),
+
+    (eps(N0f8), zero(N0f8), zero(N0f8)),
+    (one(N0f8), zero(N0f8), zero(N0f8)),
+    (zero(N0f8), eps(N0f8), zero(N0f8)),
+    (zero(N0f8), one(N0f8), zero(N0f8)),
+    (zero(N0f8), zero(N0f8), eps(N0f8)),
+    (zero(N0f8), zero(N0f8), one(N0f8)),
+
+    (eps(N0f8), eps(N0f8), zero(N0f8)),
+    (eps(N0f8), one(N0f8), zero(N0f8)),
+    (eps(N0f8), zero(N0f8), eps(N0f8)),
+    (eps(N0f8), zero(N0f8), one(N0f8)),
+
+    (one(N0f8), eps(N0f8), zero(N0f8)),
+    (one(N0f8), one(N0f8), zero(N0f8)),
+    (one(N0f8), zero(N0f8), eps(N0f8)),
+    (one(N0f8), zero(N0f8), one(N0f8)),
+
+    (eps(N0f8), eps(N0f8), zero(N0f8)),
+    (one(N0f8), eps(N0f8), zero(N0f8)),
+    (zero(N0f8), eps(N0f8), eps(N0f8)),
+    (zero(N0f8), eps(N0f8), one(N0f8)),
+
+    (eps(N0f8), one(N0f8), zero(N0f8)),
+    (one(N0f8), one(N0f8), zero(N0f8)),
+    (zero(N0f8), one(N0f8), eps(N0f8)),
+    (zero(N0f8), one(N0f8), one(N0f8)),
+
+    (eps(N0f8), zero(N0f8), eps(N0f8)),
+    (one(N0f8), zero(N0f8), eps(N0f8)),
+    (zero(N0f8), eps(N0f8), eps(N0f8)),
+    (zero(N0f8), one(N0f8), eps(N0f8)),
+
+    (eps(N0f8), zero(N0f8), one(N0f8)),
+    (one(N0f8), zero(N0f8), one(N0f8)),
+    (zero(N0f8), eps(N0f8), one(N0f8)),
+    (zero(N0f8), one(N0f8), one(N0f8)),
+    
+    (eps(N0f8), eps(N0f8), eps(N0f8)),
+    (eps(N0f8), eps(N0f8), one(N0f8)),
+    (eps(N0f8), one(N0f8), eps(N0f8)),
+    (eps(N0f8), one(N0f8), one(N0f8)),
+    (one(N0f8), eps(N0f8), eps(N0f8)),
+    (one(N0f8), eps(N0f8), one(N0f8)),
+    (one(N0f8), one(N0f8), eps(N0f8)),
+    (one(N0f8), one(N0f8), one(N0f8)),
+# =#
+)
+nudge_color(x::RGB{N0f8}) = RGB{N0f8}((rgb(x) .+ rand(nudges))...)
+#= = = # unused
+function nudge_color(x::RGB{N0f8}, offset::Tuple{N0f8, N0f8, N0f8})
+    return RGB{N0f8}(x.r + offset[1], x.g + offset[2], x.b + offset[3])
+end
+=#
+
+#= =
+using BenchmarkTools
 begin
-    using BenchmarkTools
     function run_bench()
         
-        colors = [rand_color() for _ in 1:50]
-        scores = get_scores(colors)
+        #colors = [rand_color() for _ in 1:50]
+        #scores = get_scores(colors)
         #=
         @benchmark update_scores!(scores, colors, updated_index) setup = (begin
             colors = $colors
@@ -88,7 +177,8 @@ begin
             colors[updated_index] = rand_color()
         end)
         =#
-        @benchmark find_min_score(scores) setup = (scores = $scores)
+        #@benchmark find_min_score(scores) setup = (scores = $scores)
+        @benchmark colordiff(c, d) setup = (c = rand_color(); d = rand_color())
     end
     run_bench()
 end
