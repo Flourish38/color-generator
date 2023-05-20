@@ -93,16 +93,24 @@ Number of iterations: 243181017  Time: 0 Time: 1:42:31 (25.29 μs/it)
 so_30_193 = parse.(RGB, ["#F50A65", "#9A0026", "#F89A8A", "#F9100E", "#856C60", "#964005", "#ED7A17", "#FAB62C", "#AE9971", "#7C6309", "#E1EA39", "#748D15", "#2E5802", "#30CD05", "#8CB892", "#088A59", "#77837C", "#10FEC0", "#046D6E", "#38F3FA", "#1CA6B4", "#037FB8", "#76B7F8", "#72739F", "#0A4BE6", "#B59CF6", "#A610C0", "#F93AF3", "#B68BA0", "#915170"])
 
 #=
-Number of iterations: 324680261  Time: 0 Time: 1:26:53 (16.06 μs/it)
-    score:             11.257392131539858
-    best_score:        17.25865765013152
-    last_improvement:  224686401
+Number of iterations: 145213568  Time: 0 Time: 0:40:04 (16.56 μs/it)
+  score:             13.223738789246072
+  best_score:        17.157537748704137
+  last_improvement:  45234331
 =#
-so_40_172 = parse.(RGB,["#D41464", "#F56E84", "#8C0A28", "#875D58", "#DA011A", "#B18B82", "#F75B10", "#852F00", "#FCAB81", "#9B6110", "#D78A07", "#AFA180", "#E1BC00", "#777368", "#958D08", "#69641D", "#A1C704", "#01A704", "#07FF21", "#9DC695", "#0E671F", "#5A8B64", "#16FFBE", "#09685D", "#00B2AA", "#8B9E9D", "#05F4FE", "#01859C", "#0CBCE8", "#015F96", "#80829B", "#417BFE", "#665897", "#2534FA", "#B38AF4", "#AB03C1", "#FE00DD", "#AA6C9A", "#FF94DD", "#7F3864"])
+so_40_171 = parse.(RGB, ["#FC699B", "#B8979D", "#980337", "#B45D54", "#A31500", "#FE6501", "#DFA379", "#894E0A", "#8C7561", "#BC7A04", "#FCC548", "#7D6B07", "#A49D75", "#F9F727", "#92CA04", "#628A07", "#39550D", "#677162", "#9ECEA4", "#01B351", "#2EFF89", "#018155", "#03B09E", "#03696D", "#09DBEE", "#7C9DA4", "#18B5F9", "#0E5F92", "#777F9A", "#0B83FB", "#B2A6FA", "#5F5299", "#0F13F2", "#AC0BD4", "#A86EAD", "#FF0AFE", "#F6ADE5", "#83086C", "#7E616D", "#D50B7E"])
 
+#=
+Number of iterations: 236399482  Time: 0 Time: 1:21:30 (20.69 μs/it)
+  score:             10.932998142989415
+  best_score:        15.878677642990112
+  last_improvement:  136406986
+=#
+so_50_158 = parse.(RGB, ["#D60662", "#86013A", "#FEA6B4", "#AA918F", "#FE6E68", "#834D48", "#D62A2F", "#8E0702", "#B06F52", "#F9B08E", "#FF6B16", "#924805", "#C67C08", "#786D5F", "#B79E78", "#EEB000", "#886602", "#A59812", "#F3E468", "#69790E", "#99C80F", "#354C08", "#808C6B", "#35A214", "#A4C49E", "#6EEB80", "#526653", "#00772F", "#02B27F", "#04EBCB", "#148674", "#26BCC1", "#A7FAFF", "#8EA0A3", "#0E6777", "#0A93B4", "#85C7ED", "#055691", "#666D7E", "#0F8BF3", "#9E9EC0", "#4460FD", "#5B4B99", "#0500D4", "#9270BC", "#D891D4", "#FE2CFF", "#C811AB", "#834E74", "#B86F8A"])
 
 begin
-    so_colors = so_distinguishable_colors(number_of_colors_generated; its=minimum_iterations, thresh=minimum_iterations_since_last_improvement)
+    n = 20
+    so_colors = so_distinguishable_colors(n; thresh=100000000)
     println()
     println(collect(map(x -> "#" * hex(x), so_colors)))
     @show score(so_colors)
