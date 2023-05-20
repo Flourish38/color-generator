@@ -17,7 +17,7 @@ end
     return min_diff
 end
 
-@views function get_scores(colors::Vector{<:Color})
+@views function get_scores(colors::Vector{RGB{N0f8}})
     scores = Vector{Tuple{Float64, Int}}(undef, length(colors))
     for (i, c) in enumerate(colors)
         min_diff = dist_to_discord_color(c)

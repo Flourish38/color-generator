@@ -7,6 +7,11 @@ dark_member_background = HSL(220, 0.065, 0.18)
 light_member_background = HSL(220, 0.13, 0.955)
 
 begin
+    aurora = [HSL(220, 0.865, 0.175),
+        HSL(238, 0.764, 0.416),
+        HSL(184, 0.78, 0.339),
+        HSL(169, 0.602, 0.325),
+        HSL(230, 0.925, 0.263)]
     chroma_glow = [HSL(183, 0.863, 0.402),
         HSL(258, 0.898, 0.463),
         HSL(298, 0.909, 0.343),
@@ -44,8 +49,18 @@ begin
     mint_apple = [HSL(166, 0.397, 0.525),
         HSL(119, 0.404, 0.559),
         HSL(87, 0.483, 0.598)]
+    neon_nights = [HSL(176, 0.988, 0.331),
+        HSL(259, 0.395, 0.553),
+        HSL(314, 0.525, 0.463)]
     retro_raincloud = [HSL(202, 0.47, 0.429),
         HSL(241, 0.296, 0.61)]
+    retro_storm = [HSL(202, 0.47, 0.429),
+        HSL(241, 0.278, 0.473)]
+    sepia = [HSL(33, 0.142, 0.457),
+        HSL(36, 0.468, 0.243)]
+    strawberry_lemonade = [HSL(327, 0.741, 0.394),
+        HSL(28, 0.717, 0.443),
+        HSL(40, 0.802, 0.525)]
     sunrise = [HSL(327, 0.42, 0.439),
         HSL(27, 0.449, 0.58),
         HSL(50, 0.463, 0.445)]
@@ -54,9 +69,10 @@ begin
     under_the_sea = [HSL(115, 0.105, 0.429),
         HSL(159, 0.204, 0.433),
         HSL(175, 0.109, 0.467)]
-    gradient_themes = [chroma_glow, citrus_sherbert, cotton_candy, crimson_moon, desert_khaki, dusk, easter_egg, forest, hanami, lofi_vibes, mars, midnight_blurple, mint_apple, retro_raincloud, sunrise, sunset, under_the_sea]
-    dark_gradient_themes = [chroma_glow, crimson_moon, dusk, forest, mars, midnight_blurple, sunset, under_the_sea]
+    gradient_themes = [aurora, chroma_glow, citrus_sherbert, cotton_candy, crimson_moon, desert_khaki, dusk, easter_egg, forest, hanami, lofi_vibes, mars, midnight_blurple, mint_apple, neon_nights, retro_raincloud, retro_storm, sepia, sunrise, strawberry_lemonade, sunset, under_the_sea]
+    dark_gradient_themes = [aurora, chroma_glow, crimson_moon, dusk, forest, mars, midnight_blurple, neon_nights, retro_storm, sepia, strawberry_lemonade, sunset, under_the_sea]
     light_gradient_themes = [citrus_sherbert, cotton_candy, desert_khaki, easter_egg, hanami, lofi_vibes, mint_apple, retro_raincloud, sunrise]
+    @assert all([x in dark_gradient_themes || x in light_gradient_themes for x in gradient_themes])
 end
 
 const A = 0.055
@@ -201,11 +217,11 @@ end
 
 all_discord_colors = collect(union(all_darkened_sat_colors, all_lightened_sat_colors, all_base_sat_colors)); @show length(all_discord_colors)
 
+const offsets = (one(N0f8), zero(N0f8), eps(N0f8))
+
 function adjacent_colors(color::RGB{N0f8})
     (RGB{N0f8}(color.r + r, color.g + g, color.b + b) for r in offsets, g in offsets, b in offsets if !(r == 0 && g == 0 && b == 0))
 end
-
-const offsets = (one(N0f8), zero(N0f8), eps(N0f8))
 
 function generate_color_dist_array(all_discord_colors)
     println("Pre-computing color distance array. This will take a while, but the ETA will shrink rapidly as the computation proceeds. On my machine, it takes 10-15 minutes.")
