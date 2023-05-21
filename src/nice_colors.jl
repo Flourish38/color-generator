@@ -108,9 +108,19 @@ Number of iterations: 236399482  Time: 0 Time: 1:21:30 (20.69 μs/it)
 =#
 so_50_158 = parse.(RGB, ["#D60662", "#86013A", "#FEA6B4", "#AA918F", "#FE6E68", "#834D48", "#D62A2F", "#8E0702", "#B06F52", "#F9B08E", "#FF6B16", "#924805", "#C67C08", "#786D5F", "#B79E78", "#EEB000", "#886602", "#A59812", "#F3E468", "#69790E", "#99C80F", "#354C08", "#808C6B", "#35A214", "#A4C49E", "#6EEB80", "#526653", "#00772F", "#02B27F", "#04EBCB", "#148674", "#26BCC1", "#A7FAFF", "#8EA0A3", "#0E6777", "#0A93B4", "#85C7ED", "#055691", "#666D7E", "#0F8BF3", "#9E9EC0", "#4460FD", "#5B4B99", "#0500D4", "#9270BC", "#D891D4", "#FE2CFF", "#C811AB", "#834E74", "#B86F8A"])
 
+#=
+Number of iterations: 17164310   Time: 0:12:03 (42.16 μs/it)
+  score:             11.184050314237812
+  best_score:        12.344981165971474
+  last_improvement:  7179034
+=#
+# ... I don't think this is super useful, but it's provided just in case.
+so_0100_123 = parse.(RGB, ["#8B7F82", "#B87C8D", "#F199B1", "#B60F54", "#75002D", "#8F6369", "#F11164", "#FE7270", "#A61027", "#C0605C", "#713C38", "#FE0835", "#6C0101", "#D00100", "#985239", "#C09E92", "#EF4A0E", "#EB8D68", "#FBBEA2", "#A07864", "#B8611E", "#6E5647", "#753803", "#EE780A", "#FFA001", "#BC7C0C", "#C39B68", "#FFC880", "#795302", "#846F4C", "#C99E0C", "#BAAF9B", "#F5DD0A", "#CFC17F", "#4F4B03", "#B4B50E", "#918E5A", "#6D6C64", "#FEFC97", "#6E7411", "#7E9603", "#8C8E84", "#96DA1B", "#4F5A3C", "#1F3B00", "#2F6103", "#8ABA65", "#608A47", "#B5CCAD", "#03AA2B", "#B1F2AD", "#80A180", "#1BFD78", "#027642", "#02CB7A", "#005131", "#0EA16F", "#4E846F", "#01AAA0", "#47615E", "#A5DDD8", "#0CFDF3", "#86ADAD", "#678487", "#05E0F8", "#017684", "#179AAE", "#025670", "#13C1F9", "#0B84B5", "#9FBCD9", "#5B6876", "#818FA3", "#47A3F5", "#1266AB", "#2C79FC", "#203F86", "#6F75AE", "#044BE2", "#C4B3F9", "#8E73FC", "#0C0BB3", "#7452B6", "#564176", "#6A0FEE", "#CE81F7", "#B418FF", "#806589", "#A567BA", "#7A1593", "#AFA4B0", "#BD96C1", "#F3C5ED", "#E819CD", "#695E66", "#B60692", "#6D0051", "#E26EB4", "#B85282", "#7E3F5B"])
+
+
 begin
-    n = 20
-    so_colors = so_distinguishable_colors(n; thresh=100000000)
+    n = 1000
+    so_colors = so_distinguishable_colors(n; thresh=1000000)
     println()
     println(collect(map(x -> "#" * hex(x), so_colors)))
     @show score(so_colors)
