@@ -217,6 +217,14 @@ end
 
 all_discord_colors = collect(union(all_darkened_sat_colors, all_lightened_sat_colors, all_base_sat_colors)); @show length(all_discord_colors)
 
+begin
+    include("color_diff_map.jl")
+    discord_diff_map = ColorDiffMap()
+    @time add_colors!(discord_diff_map, all_discord_colors)
+end
+
+# This was moved to color_diff_map.jl
+#=
 const offsets = (one(N0f8), zero(N0f8), eps(N0f8))
 
 function adjacent_colors(color::RGB{N0f8})
@@ -276,6 +284,7 @@ let
     end
     #dist_to_discord_color(color::Color)::Float64 = discord_color_dist_array[color_to_index(color)]
 end
+=#
 
 #discord_color_dist_array_extracted = [dist_to_discord_color(RGB{N0f8}(r, g, b)) for r in zero(N0f8):eps(N0f8):one(N0f8), g in zero(N0f8):eps(N0f8):one(N0f8), b in zero(N0f8):eps(N0f8):one(N0f8)]
 #bson("data/discord_color_dist_array.bson", discord_color_dist_array = discord_color_dist_array_extracted)
