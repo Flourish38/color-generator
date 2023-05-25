@@ -221,6 +221,7 @@ begin
     include("color_diff_map.jl")
     discord_diff_map = ColorDiffMap()
     updates_log = @time add_colors!(discord_diff_map, all_discord_colors)
+    nothing
 end
 
 # This was moved to color_diff_map.jl
