@@ -220,7 +220,7 @@ all_discord_colors = collect(union(all_darkened_sat_colors, all_lightened_sat_co
 begin
     include("color_diff_map.jl")
     discord_diff_map = ColorDiffMap()
-    @time add_colors!(discord_diff_map, all_discord_colors)
+    updates_log = @time add_colors!(discord_diff_map, all_discord_colors)
 end
 
 # This was moved to color_diff_map.jl

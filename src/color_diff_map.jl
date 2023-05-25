@@ -2,6 +2,8 @@ begin
     using Colors, IterTools, FixedPointNumbers, ProgressMeter, BSON
 end
 
+const ϵ = eps(N0f8)
+
 # This function wraps the transform function so that it is guaranteed to use Float64 for computations.
 # Converts to Lab because the transform is only intended for use immediately prior to calling colordiff,
 # which would convert to Lab anyways.
@@ -20,24 +22,25 @@ end
 Base.Broadcast.broadcastable(map::ColorDiffMap) = Ref(map)
 
 Colors.colordiff(map::ColorDiffMap, color::RGB{N0f8}) = map.array[color.r.i+1, color.g.i+1, color.b.i+1]
+Colors.colordiff(map::ColorDiffMap, color) = colordiff(map, convert(RGB{N0f8}, color))
 
 const n0f8s = zero(N0f8):eps(N0f8):one(N0f8)
 
 function add_color_simple!(map::ColorDiffMap, color)
-    array = map.array
-    # colordiff converts to Lab if you don't do it, so I might as well.
-    f(c) = map.transform(c)
-    color = f(color)
-    updates = 0
-    for r in n0f8s, g in n0f8s, b in n0f8s
-        diff = colordiff(color, f(RGB(r, g, b)))
-        if diff < array[r.i+1, g.i+1, b.i+1]
-            array[r.i+1, g.i+1, b.i+1] = diff
-            updates += 1
+    t = @elapsed begin
+        array = map.array
+        f(c) = map.transform(c)
+        color = f(color)
+        updates = 0
+        for r in n0f8s, g in n0f8s, b in n0f8s
+            diff = colordiff(color, f(RGB(r, g, b)))
+            if diff < array[r.i+1, g.i+1, b.i+1]
+                array[r.i+1, g.i+1, b.i+1] = diff
+                updates += 1
+            end
         end
     end
-    #push!(update_log, updates)
-    return updates
+    return updates, t
 end
 
 offsets = (one(N0f8), zero(N0f8), eps(N0f8))
@@ -45,29 +48,103 @@ offsets = (one(N0f8), zero(N0f8), eps(N0f8))
 
 adjacent_colors(color::RGB{N0f8}) = (RGB{N0f8}(color.r + r, color.g + g, color.b + b) for r in offsets, g in offsets, b in offsets if !(r == 0 && g == 0 && b == 0))
 
-function add_color_flood!(map::ColorDiffMap, color)
-    array = map.array
-    # colordiff converts to Lab if you don't do it, so I might as well.
-    f(c) = map.transform(c)
-    color = f(color)
-    updates = 0
-    checked_colors = Set{RGB{N0f8}}()
-    colors_to_check = Set{RGB{N0f8}}((convert(RGB{N0f8}, color),))
-    while !isempty(colors_to_check)
-        c = pop!(colors_to_check)
-        push!(checked_colors, c)
-        diff = colordiff(f(c), color)
-        if diff < array[c.r.i+1, c.g.i+1, c.b.i+1]
-            array[c.r.i+1, c.g.i+1, c.b.i+1] = diff
-            updates += 1
-            if updates >= 838861  # If it updates 5% of the color space, it probably still has a ways to go, and would be better off using a full scan.
-                return updates + add_color_simple!(map, color)
+function add_color_flood!(map::ColorDiffMap, color, colors_to_check::Set{RGB{N0f8}} = Set((convert(RGB{N0f8}, color),)), checked_colors::Set{RGB{N0f8}} = Set{RGB{N0f8}}())
+    t = @elapsed begin
+        array = map.array
+        f(c) = map.transform(c)
+        color = f(color)
+        updates = 0
+        while !isempty(colors_to_check)
+            c = pop!(colors_to_check)
+            push!(checked_colors, c)
+            diff = colordiff(f(c), color)
+            if diff < array[c.r.i+1, c.g.i+1, c.b.i+1]
+                array[c.r.i+1, c.g.i+1, c.b.i+1] = diff
+                updates += 1
+                if updates >= 838861  # If it updates 5% of the color space, it probably still has a ways to go, and would be better off using a full scan.
+                    update = add_color_simple!(map, color)
+                    return updates + update[1], -update[2], 26*updates, length(checked_colors)
+                end
+                union!(colors_to_check, Iterators.filter(!in(checked_colors), adjacent_colors(c)))
             end
-            union!(colors_to_check, Iterators.filter(!in(checked_colors), adjacent_colors(c)))
         end
     end
-    #push!(update_log, updates)
-    return updates
+    return updates, t, 26*updates, length(checked_colors)
+end
+
+function add_color_spiral!(map::ColorDiffMap, color)
+    t = @elapsed begin
+        array = map.array
+        ic = convert(RGB{N0f8}, color)
+        f(c) = map.transform(c)
+        color = f(color)
+        diff = colordiff(f(ic), color)
+        if diff >= array[ic.r.i+1, ic.g.i+1, ic.b.i+1]
+            return 0, 0., 1
+        end
+        array[ic.r.i+1, ic.g.i+1, ic.b.i+1] = diff
+        min_r = max_r = ic.r
+        min_g = max_g = ic.g
+        min_b = max_b = ic.b
+        r_d = ic.r != zero(N0f8)
+        r_u = ic.r != one(N0f8)
+        g_d = ic.g != zero(N0f8)
+        g_u = ic.g != one(N0f8)
+        b_d = ic.b != zero(N0f8)
+        b_u = ic.b != one(N0f8)
+        updates = 1
+        while true
+            ranges = (one(N0f8):zero(N0f8), one(N0f8):zero(N0f8), one(N0f8):zero(N0f8))
+            if r_d
+                r_d = false
+                min_r -= ϵ
+                ranges = (min_r:ϵ:min_r, min_g:ϵ:max_g, min_b:ϵ:max_b)
+            elseif r_u
+                r_u = false
+                max_r += ϵ
+                ranges = (max_r:ϵ:max_r, min_g:ϵ:max_g, min_b:ϵ:max_b)
+            elseif g_d
+                g_d = false
+                min_g -= ϵ
+                ranges = (min_r:ϵ:max_r, min_g:ϵ:min_g, min_b:ϵ:max_b)
+            elseif g_u
+                g_u = false
+                max_g += ϵ
+                ranges = (min_r:ϵ:max_r, max_g:ϵ:max_g, min_b:ϵ:max_b)
+            elseif b_d
+                b_d = false
+                min_b -= ϵ
+                ranges = (min_r:ϵ:max_r, min_g:ϵ:max_g, min_b:ϵ:min_b)
+            elseif b_u
+                b_u = false
+                max_b += ϵ
+                ranges = (min_r:ϵ:max_r, min_g:ϵ:max_g, max_b:ϵ:max_b)
+            else
+                break
+            end
+            for r in ranges[1], g in ranges[2], b in ranges[3]
+                diff = colordiff(color, f(RGB(r, g, b)))
+                if diff < array[r.i+1, g.i+1, b.i+1]
+                    array[r.i+1, g.i+1, b.i+1] = diff
+                    updates += 1
+                    if r == min_r && min_r != zero(N0f8)
+                        r_d = true
+                    end; if r == max_r && max_r != one(N0f8)
+                        r_u = true
+                    end; if g == min_g && min_g != zero(N0f8)
+                        g_d = true
+                    end; if g == max_g && max_g != one(N0f8)
+                        g_u = true
+                    end; if b == min_b && min_b != zero(N0f8)
+                        b_d = true
+                    end; if b == max_b && max_b != one(N0f8)
+                        b_u = true
+                    end
+                end
+            end
+        end
+    end
+    return updates, t, (max_r.i+1-min_r.i)*(max_g.i+1-min_g.i)*(max_b.i+1-min_b.i)
 end
 
 rgb(c::Colorant) = red(c), green(c), blue(c)
@@ -77,21 +154,50 @@ function add_colors!(map::ColorDiffMap, colors)
         findmax(colordiff.(map, colors)) :
         (Inf, argmin((c -> sum(abs.(rgb(c) .- (0.5, 0.5, 0.5)))).(colors)))
     p = Progress(length(colors); dt=1)
-    consecutive_under_2_percent = 0
-    while max_distance > 0
+    update_log = []
+    #consecutive_under_2_percent = 0
+    for _ in 1:length(colors)
+         #=
+        # This is def slower than just doing spiral
         if consecutive_under_2_percent >= 3
-            add_color_flood!(map, colors[color_index])
-        elseif add_color_simple!(map, colors[color_index]) <= 335544  # 2% or less of the color space was updated. Should be faster to do a flood fill than a full scan.
-            consecutive_under_2_percent += 1
-        else
-            consecutive_under_2_percent = 0
+            push!(update_log, (color_index, add_color_flood!(map, colors[color_index])))
+        else 
+            update = add_color_simple!(map, colors[color_index])
+            push!(update_log, (color_index, update))  # 2% or less of the color space was updated. Should be faster to do a flood fill than a full scan.
+            if update[1] <= 335544
+                consecutive_under_2_percent += 1
+            else
+                consecutive_under_2_percent = 0
+            end
         end
+        # =#
+        push!(update_log, (color_index, add_color_spiral!(map, colors[color_index])))
         (max_distance, color_index) = findmax(colordiff.(map, colors))
+        if max_distance <= 0
+            break
+        end
         next!(p)
     end
     finish!(p)  # If one or more colors is already computed, the progress meter will not finish
     println()
+    return update_log
 end
+
+#=
+@time begin
+    test_map = ColorDiffMap()
+    @time @show add_color_spiral!(test_map, colorant"red")
+    #=
+    @time @show add_color_simple!(test_map, colorant"green")
+    @time @show add_color_simple!(test_map, colorant"blue")
+    @time @show add_color_simple!(test_map, colorant"cyan")
+    @time @show add_color_simple!(test_map, colorant"magenta")
+    @time @show add_color_simple!(test_map, colorant"yellow")
+    @time @show add_color_simple!(test_map, colorant"black")
+    @time @show add_color_simple!(test_map, colorant"white")
+    # =#
+end
+# = =#
 
 #=
 include("discord_colors.jl")
