@@ -6,7 +6,7 @@ using Random
     all_colors = vcat(colors, seed)
     for i in eachindex(colors)
         f = let c = colors[i]
-            x::RGB{N0f8}-> colordiff(c, x)
+            x -> colordiff(c, x)
         end
         #f(x::RGB{N0f8})::Float64 = colordiff(c, x)  # The let block is actually a smidge faster, kinda cool
         min_diff = minimum(f, all_colors[i+1:end]; init=min_diff)
@@ -37,7 +37,7 @@ end
 
 @views function update_scores!(scores::Vector{Tuple{Float64, Int}}, updated_index, colors::Vector{RGB{N0f8}}, seed::Vector{<:Color}=[]; map::Union{Nothing, ColorDiffMap}=nothing)
     c_updated = colors[updated_index]
-    f(x::RGB{N0f8})::Float64 = colordiff(x, c_updated)
+    f(x)::Float64 = colordiff(x, c_updated)
     all_colors = vcat(colors, seed)
 
     for (i, c) in enumerate(colors[1:updated_index-1])
@@ -46,7 +46,7 @@ end
         if diff < prev_diff
             scores[i] = (diff, updated_index)
         elseif prev_diff_i == updated_index  # Have to recompute minimum for this element
-            g(x::RGB{N0f8})::Float64 = colordiff(x, c)
+            g(x)::Float64 = colordiff(x, c)
             new_diff, new_diff_i = findmin(g, all_colors[i+1:end])  # This does recompute the difference between the updated color and the recomputing color, sadly.
             new_diff_i += i
             if new_diff_i > length(colors)
