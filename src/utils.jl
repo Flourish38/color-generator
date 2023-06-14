@@ -1,7 +1,7 @@
 include("color_diff_map.jl")
 using Random
 
-@views function score(colors::Vector{RGB{N0f8}}, seed::Vector{<:Color}=[]; map::Union{Nothing, ColorDiffMap}=nothing)
+@views function score(colors::Vector{RGB{N0f8}}, seed::Vector{<:Color}=RGB{N0f8}[]; map::Union{Nothing, ColorDiffMap}=nothing)
     min_diff::Float64 = isnothing(map) ? Inf64 : minimum(colordiff(map, c) for c in colors)
     all_colors = vcat(colors, seed)
     for i in eachindex(colors)
@@ -14,7 +14,7 @@ using Random
     return min_diff
 end
 
-@views function get_scores(colors::Vector{RGB{N0f8}}, seed::Vector{<:Color}=[]; map::Union{Nothing, ColorDiffMap}=nothing)
+@views function get_scores(colors::Vector{RGB{N0f8}}, seed::Vector{<:Color}=RGB{N0f8}[]; map::Union{Nothing, ColorDiffMap}=nothing)
     scores = Vector{Tuple{Float64, Int}}(undef, length(colors))
     all_colors = vcat(colors, seed)
     for (i, c) in enumerate(colors)
@@ -35,7 +35,7 @@ end
     scores
 end
 
-@views function update_scores!(scores::Vector{Tuple{Float64, Int}}, updated_index, colors::Vector{RGB{N0f8}}, seed::Vector{<:Color}=[]; map::Union{Nothing, ColorDiffMap}=nothing)
+@views function update_scores!(scores::Vector{Tuple{Float64, Int}}, updated_index, colors::Vector{RGB{N0f8}}, seed::Vector{<:Color}=RGB{N0f8}[]; map::Union{Nothing, ColorDiffMap}=nothing)
     c_updated = colors[updated_index]
     f(x)::Float64 = colordiff(x, c_updated)
     all_colors = vcat(colors, seed)
