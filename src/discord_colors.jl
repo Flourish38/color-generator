@@ -217,10 +217,11 @@ end
 
 all_discord_colors = collect(union(all_darkened_sat_colors, all_lightened_sat_colors, all_base_sat_colors)); @show length(all_discord_colors)
 
+include("color_diff_map.jl")
 begin
-    include("color_diff_map.jl")
     discord_diff_map = ColorDiffMap()
-    updates_log = @time add_colors!(discord_diff_map, all_discord_colors)
+    println("Computing discord color map. This will take a while, but the ETA will shrink rapidly as the computation proceeds. On my machine, it takes 3-7 minutes.")
+    updates_log_flood = @time add_colors!(discord_diff_map, all_discord_colors)
     nothing
 end
 
