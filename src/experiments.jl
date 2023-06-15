@@ -7,7 +7,10 @@ begin
     updates_log = @time add_colors!(discord_diff_map_prot, all_discord_colors)
     nothing
 end
-prot_colors = so_distinguishable_colors(20; map=discord_diff_map_prot, thresh=10000000)
+begin
+    prot_colors = so_distinguishable_colors(20; map=discord_diff_map_prot, thresh=10000000)
+    display_colors(prot_colors, discord_diff_map_prot)    
+end
 
 begin
     discord_diff_map_deut = ColorDiffMap(c -> deuteranopic(c, 0.7))
@@ -15,7 +18,10 @@ begin
     updates_log = @time add_colors!(discord_diff_map_deut, all_discord_colors)
     nothing
 end
-deut_colors = so_distinguishable_colors(20; map=discord_diff_map_deut, thresh=10000000)
+begin
+    deut_colors = so_distinguishable_colors(20; map=discord_diff_map_deut, thresh=10000000)
+    display_colors(deut_colors, discord_diff_map_deut)
+end
 
 begin
     discord_diff_map_trit = ColorDiffMap(c -> tritanopic(c, 0.7))
@@ -23,4 +29,7 @@ begin
     updates_log = @time add_colors!(discord_diff_map_trit, all_discord_colors)
     nothing
 end
-trit_colors = so_distinguishable_colors(20; map=discord_diff_map_trit, thresh=10000000)
+begin
+    trit_colors = so_distinguishable_colors(20; map=discord_diff_map_trit, thresh=10000000)
+    display_colors(trit_colors, discord_diff_map_trit)    
+end

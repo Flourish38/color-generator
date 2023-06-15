@@ -1,5 +1,6 @@
 include("color_diff_map.jl")
 using Random
+using TravelingSalesmanHeuristics
 
 Colors.colordiff(map::Union{Nothing, ColorDiffMap}, color) = isnothing(map) ? Inf64 : colordiff(something(map), color)
 get_f(map::Union{Nothing, ColorDiffMap}) = isnothing(map) ? c -> convert(Lab{Float64}, c) : something(map).transform
@@ -172,16 +173,31 @@ const nudges = (
 )
 nudge_color(x::RGB{N0f8}) = RGB{N0f8}((rgb(x) .+ rand(nudges))...)
 
+function tsp_order(colors, diff_map::Union{Nothing, ColorDiffMap})
+    f = get_f(diff_map)
+    D = [colordiff(f(c1), f(c2)) for c1 in colors, c2 in colors]
+    path, cost = simulated_annealing(D)
+    path, cost = two_opt(D, path)
+    return colors[path[1:length(colors)]]
+end
+
 Base.transpose(x::Colorant) = x
 function display_colors(colors, diff_map)
-    if diff_map.transform == identity_f
-        display(colors)
-    else
-        display(transpose(hcat(colors, fill(colorant"black", length(colors)), diff_map.transform.(colors))))
-    end
     println(collect(map(x -> "#" * hex(x), colors)))
+    if diff_map.transform == identity_f
+        display_cols = hcat(colors, fill(colorant"black", length(colors)))
+        display_cols = hcat(display_cols, tsp_order(colors, diff_map))
+        display(transpose(display_cols))
+    else
+        display_cols = hcat(colors, fill(colorant"black", length(colors)), diff_map.transform.(colors), fill(colorant"black", length(colors), 2))
+        tsp_colors = tsp_order(colors, diff_map)
+        display_cols = hcat(display_cols, tsp_colors, fill(colorant"black", length(colors)), diff_map.transform.(tsp_colors))
+        display(transpose(display_cols))
+    end
     nothing
 end
+
+
 #= = = # unused
 function nudge_color(x::RGB{N0f8}, offset::Tuple{N0f8, N0f8, N0f8})
     return RGB{N0f8}(x.r + offset[1], x.g + offset[2], x.b + offset[3])
