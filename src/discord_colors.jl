@@ -221,7 +221,7 @@ include("color_diff_map.jl")
 begin
     discord_diff_map = ColorDiffMap()
     println("Computing discord color map. This will take a while, but the ETA will shrink rapidly as the computation proceeds. On my machine, it takes 3-7 minutes.")
-    updates_log_flood = @time add_colors!(discord_diff_map, all_discord_colors)
+    updates_log = @time add_colors!(discord_diff_map, all_discord_colors)
     nothing
 end
 

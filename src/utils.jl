@@ -1,28 +1,33 @@
 include("color_diff_map.jl")
 using Random
 
+Colors.colordiff(map::Union{Nothing, ColorDiffMap}, color) = isnothing(map) ? Inf64 : colordiff(something(map), color)
+get_f(map::Union{Nothing, ColorDiffMap}) = isnothing(map) ? c -> convert(Lab{Float64}, c) : something(map).transform
+
 @views function score(colors::Vector{RGB{N0f8}}, seed::Vector{<:Color}=RGB{N0f8}[]; map::Union{Nothing, ColorDiffMap}=nothing)
-    min_diff::Float64 = isnothing(map) ? Inf64 : minimum(colordiff(map, c) for c in colors)
+    min_diff::Float64 = minimum(colordiff(map, c) for c in colors)
+    f = get_f(map)
     all_colors = vcat(colors, seed)
     for i in eachindex(colors)
-        f = let c = colors[i]
-            x -> colordiff(c, x)
+        cd = let c = colors[i]
+            x -> colordiff(f(c), f(x))
         end
         #f(x::RGB{N0f8})::Float64 = colordiff(c, x)  # The let block is actually a smidge faster, kinda cool
-        min_diff = minimum(f, all_colors[i+1:end]; init=min_diff)
+        min_diff = minimum(cd, all_colors[i+1:end]; init=min_diff)
     end
     return min_diff
 end
 
 @views function get_scores(colors::Vector{RGB{N0f8}}, seed::Vector{<:Color}=RGB{N0f8}[]; map::Union{Nothing, ColorDiffMap}=nothing)
     scores = Vector{Tuple{Float64, Int}}(undef, length(colors))
+    f = get_f(map)
     all_colors = vcat(colors, seed)
     for (i, c) in enumerate(colors)
-        min_diff = isnothing(map) ? Inf64 : colordiff(map, c)
+        min_diff = colordiff(map, c)
         min_diff_index = i
         if i < length(all_colors)
-            f(x) = colordiff(x, c)
-            diff, j = findmin(f, all_colors[i+1:end])
+            cd(x) = colordiff(f(x), f(c))
+            diff, j = findmin(cd, all_colors[i+1:end])
             if diff < min_diff
                 min_diff = diff
                 if i + j <= length(colors)  # If the minimum difference is with a seed color, since we can't change that color, we shouldn't point to it.
@@ -37,22 +42,23 @@ end
 
 @views function update_scores!(scores::Vector{Tuple{Float64, Int}}, updated_index, colors::Vector{RGB{N0f8}}, seed::Vector{<:Color}=RGB{N0f8}[]; map::Union{Nothing, ColorDiffMap}=nothing)
     c_updated = colors[updated_index]
-    f(x)::Float64 = colordiff(x, c_updated)
+    f = get_f(map)
+    cd(x)::Float64 = colordiff(f(x), f(c_updated))
     all_colors = vcat(colors, seed)
 
     for (i, c) in enumerate(colors[1:updated_index-1])
         prev_diff, prev_diff_i = scores[i]
-        diff = f(c)
+        diff = cd(c)
         if diff < prev_diff
             scores[i] = (diff, updated_index)
         elseif prev_diff_i == updated_index  # Have to recompute minimum for this element
-            g(x)::Float64 = colordiff(x, c)
-            new_diff, new_diff_i = findmin(g, all_colors[i+1:end])  # This does recompute the difference between the updated color and the recomputing color, sadly.
+            cd_sub(x)::Float64 = colordiff(f(x), f(c))
+            new_diff, new_diff_i = findmin(cd_sub, all_colors[i+1:end])  # This does recompute the difference between the updated color and the recomputing color, sadly.
             new_diff_i += i
             if new_diff_i > length(colors)
                 new_diff_i = i
             end
-            map_diff = isnothing(map) ? Inf64 : colordiff(map, c)
+            map_diff = colordiff(map, c)
             if map_diff < new_diff
                 new_diff = map_diff
                 new_diff_i = i
@@ -60,12 +66,12 @@ end
             scores[i] = (new_diff, new_diff_i)
         end
     end
-    updated_diff, updated_diff_i = updated_index < length(all_colors) ? findmin(f, all_colors[updated_index+1:end]) : (Inf, 0)
+    updated_diff, updated_diff_i = updated_index < length(all_colors) ? findmin(cd, all_colors[updated_index+1:end]) : (Inf, 0)
     updated_diff_i += updated_index
     if updated_diff_i > length(colors)
         updated_diff_i = updated_index
     end
-    map_diff = isnothing(map) ? Inf64 : colordiff(map, c)
+    map_diff = colordiff(map, c_updated)
     if map_diff < updated_diff  # if updated_index == length(colors), this will always be true
         updated_diff = map_diff
         updated_diff_i = updated_index

@@ -9,7 +9,7 @@ Number of iterations: 99061115   Time: 0:01:11 ( 0.72 μs/it)
     best_score:        36.345829328252954
     last_improvement:  750467
 =#
-so_03_362 = parse.(RGB, ["#FF1746", "#009900"])
+so_02_363 = parse.(RGB, ["#FF1746", "#009900"])
 
 #=
 Number of iterations: 99734278   Time: 0:02:38 ( 1.59 μs/it)

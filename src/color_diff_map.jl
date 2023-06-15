@@ -4,12 +4,15 @@ end
 
 const ϵ = eps(N0f8)
 
+function identity_f(c)
+    convert(Lab{Float64}, c)
+end
 # This function wraps the transform function so that it is guaranteed to use Float64 for computations.
 # Converts to Lab because the transform is only intended for use immediately prior to calling colordiff,
 # which would convert to Lab anyways.
 transform_to_f(transform) = transform == identity ?
-    c -> convert(Lab{Float64}, c) :
-    c -> convert(Lab{Float64}, transform(convert(typeof(c).name.wrapper{Float64}, c)))
+    identity_f :
+    c -> transform(convert(Lab{Float64}, c))
 
 struct ColorDiffMap
     array::Array{Float64, 3}
