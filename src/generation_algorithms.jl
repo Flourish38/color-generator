@@ -47,6 +47,5 @@ function so_distinguishable_colors(n::Int, seed::Vector{<:Color}=RGB{N0f8}[]; it
         next!(prog; showvalues = ((:score, score), (:best_score, best_score), (:last_improvement, last_improvement)))
     end
     finish!(prog; showvalues = ((:score, score), (:best_score, best_score), (:last_improvement, last_improvement)))
-    best_colors = sort(best_colors, by = x -> LCHab(x).h)
-    return f == identity_f ? best_colors : hcat(best_colors, f.(best_colors))
+    return sort(best_colors, by = x -> LCHab(x).h)
 end

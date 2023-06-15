@@ -171,6 +171,17 @@ const nudges = (
 # =#
 )
 nudge_color(x::RGB{N0f8}) = RGB{N0f8}((rgb(x) .+ rand(nudges))...)
+
+Base.transpose(x::Colorant) = x
+function display_colors(colors, diff_map)
+    if diff_map.transform == identity_f
+        display(colors)
+    else
+        display(transpose(hcat(colors, fill(colorant"black", length(colors)), diff_map.transform.(colors))))
+    end
+    println(collect(map(x -> "#" * hex(x), colors)))
+    nothing
+end
 #= = = # unused
 function nudge_color(x::RGB{N0f8}, offset::Tuple{N0f8, N0f8, N0f8})
     return RGB{N0f8}(x.r + offset[1], x.g + offset[2], x.b + offset[3])
