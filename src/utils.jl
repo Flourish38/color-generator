@@ -2,8 +2,8 @@ include("color_diff_map.jl")
 using Random
 using TravelingSalesmanHeuristics
 
-Colors.colordiff(map::Union{Nothing, ColorDiffMap}, color) = isnothing(map) ? Inf64 : colordiff(something(map), color)
-get_f(map::Union{Nothing, ColorDiffMap}) = isnothing(map) ? c -> convert(Lab{Float64}, c) : something(map).transform
+Colors.colordiff(::Nothing, _) = Inf64
+get_f(map::Nothing) = identity_f
 
 @views function score(colors::Vector{RGB{N0f8}}, seed::Vector{<:Color}=RGB{N0f8}[]; map::Union{Nothing, ColorDiffMap}=nothing)
     min_diff::Float64 = minimum(colordiff(map, c) for c in colors)

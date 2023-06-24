@@ -73,6 +73,7 @@ begin
     dark_gradient_themes = [aurora, chroma_glow, crimson_moon, dusk, forest, mars, midnight_blurple, neon_nights, retro_storm, sepia, strawberry_lemonade, sunset, under_the_sea]
     light_gradient_themes = [citrus_sherbert, cotton_candy, desert_khaki, easter_egg, hanami, lofi_vibes, mint_apple, retro_raincloud, sunrise]
     @assert all([x in dark_gradient_themes || x in light_gradient_themes for x in gradient_themes])
+    @show length(gradient_themes)
 end
 
 const A = 0.055
@@ -219,76 +220,47 @@ all_discord_colors = collect(union(all_darkened_sat_colors, all_lightened_sat_co
 
 include("color_diff_map.jl")
 begin
-    discord_diff_map = ColorDiffMap()
-    println("Computing discord color map. This will take a while, but the ETA will shrink rapidly as the computation proceeds. On my machine, it takes 3-7 minutes.")
-    updates_log = @time add_colors!(discord_diff_map, all_discord_colors)
+    discord_diff_map = if isfile("discord_diff_map.bson")
+        ColorDiffMap("discord_diff_map.bson")
+    else
+        _map = ColorDiffMap()
+        println("Computing discord color map. This will take a while, but the ETA will shrink rapidly as the computation proceeds. On my machine, it takes 3-7 minutes.")
+        add_colors!(_map, all_discord_colors)
+        save(_map, "discord_diff_map.bson")
+        _map
+    end
+    nothing
+end
+if true
+    discord_diff_map_prot = if isfile("discord_diff_map_prot.bson")
+        ColorDiffMap("discord_diff_map_prot.bson")
+    else
+        _map = ColorDiffMap(protanopic)
+        println("Computing protanopic discord color map.")
+        add_colors!(_map, all_discord_colors)
+        save(_map, "discord_diff_map_prot.bson")
+        _map
+    end
+    discord_diff_map_deut = if isfile("discord_diff_map_deut.bson")
+        ColorDiffMap("discord_diff_map_deut.bson")
+    else
+        _map = ColorDiffMap(deuteranopic)
+        println("Computing deuteranopic discord color map.")
+        add_colors!(_map, all_discord_colors)
+        save(_map, "discord_diff_map_deut.bson")
+        _map
+    end
+    discord_diff_map_prot = if isfile("discord_diff_map_trit.bson")
+        ColorDiffMap("discord_diff_map_trit.bson")
+    else
+        _map = ColorDiffMap(tritanopic)
+        println("Computing tritanopic discord color map.")
+        add_colors!(_map, all_discord_colors)
+        save(_map, "discord_diff_map_trit.bson")
+        _map
+    end
     nothing
 end
 
-# This was moved to color_diff_map.jl
-#=
-const offsets = (one(N0f8), zero(N0f8), eps(N0f8))
 
-function adjacent_colors(color::RGB{N0f8})
-    (RGB{N0f8}(color.r + r, color.g + g, color.b + b) for r in offsets, g in offsets, b in offsets if !(r == 0 && g == 0 && b == 0))
-end
-
-function generate_color_dist_array(all_discord_colors)
-    println("Pre-computing color distance array. This will take a while, but the ETA will shrink rapidly as the computation proceeds. On my machine, it takes 10-15 minutes.")
-    discord_color_dist_array = Array{Float64}(undef, 256, 256, 256)
-    color_to_index(color::RGB{N0f8}) = CartesianIndex(color.r.i + 1, color.g.i + 1, color.b.i + 1)
-    dist_to_discord_color(color::RGB{N0f8}) = discord_color_dist_array[color_to_index(color)]
-
-    initial_discord_color = all_discord_colors[argmin((c -> sum(abs.(rgb(c) .- (0.5, 0.5, 0.5)))).(all_discord_colors))]
-    @time for r in zero(N0f8):eps(N0f8):one(N0f8), g in zero(N0f8):eps(N0f8):one(N0f8), b in zero(N0f8):eps(N0f8):one(N0f8)
-        color = RGB{N0f8}(r, g, b)
-        discord_color_dist_array[color_to_index(color)] = colordiff(color, initial_discord_color)
-    end
-    (max_distance, discord_color_index) = findmax(dist_to_discord_color.(all_discord_colors))
-    p = Progress(length(all_discord_colors); dt=1, start=1)
-    while max_distance > 0  # once every color has been finished, they will all have a distance of 0 to the closest discord color because they are the closest discord color.
-        discord_color = all_discord_colors[discord_color_index]
-        discord_color_dist_array[color_to_index(discord_color)] = 0
-        checked_colors = Set{RGB{N0f8}}((discord_color,))
-        colors_to_check = Set{RGB{N0f8}}(adjacent_colors(discord_color))
-        while !isempty(colors_to_check)
-            color = pop!(colors_to_check)
-            push!(checked_colors, color)
-            diff = colordiff(color, discord_color)
-            if diff < dist_to_discord_color(color)
-                discord_color_dist_array[color_to_index(color)] = diff
-                union!(colors_to_check, Iterators.filter(x -> !(x in checked_colors), adjacent_colors(color)))
-            end
-        end
-        next!(p)
-        (max_distance, discord_color_index) = findmax(dist_to_discord_color.(all_discord_colors))  # This is very fast, no reason to try to do fewer lookups.
-    end
-    bson("discord_color_dist_array.bson", Dict(:discord_color_dist_array => discord_color_dist_array))
-    return discord_color_dist_array
-end
-
-# You honestly should only use dist_to_discord_color for RGB{N0f8}s anyways, so these are not included by default.
-#=
-function color_to_index(color::RGB{N0f8})
-    CartesianIndex(color.r.i + 1, color.g.i + 1, color.b.i + 1)
-end
-color_to_index(color::Color) = color_to_index(RGB{N0f8}(color))
-=#
-
-let 
-    discord_color_dist_array::Array{Float64, 3} = isfile("discord_color_dist_array.bson") ? 
-        BSON.load("discord_color_dist_array.bson")[:discord_color_dist_array] :
-        generate_color_dist_array(all_discord_colors)
-
-    global dist_to_discord_color
-    function dist_to_discord_color(color::RGB{N0f8})::Float64
-        discord_color_dist_array[color.r.i+1, color.g.i+1, color.b.i+1]
-    end
-    #dist_to_discord_color(color::Color)::Float64 = discord_color_dist_array[color_to_index(color)]
-end
-=#
-
-#discord_color_dist_array_extracted = [dist_to_discord_color(RGB{N0f8}(r, g, b)) for r in zero(N0f8):eps(N0f8):one(N0f8), g in zero(N0f8):eps(N0f8):one(N0f8), b in zero(N0f8):eps(N0f8):one(N0f8)]
-#bson("data/discord_color_dist_array.bson", discord_color_dist_array = discord_color_dist_array_extracted)
-
-# @benchmark colordiff(a, b) setup=(a = RGB{N0f8}(rand(N0f8), rand(N0f8), rand(N0f8)); b = RGB{N0f8}(rand(N0f8), rand(N0f8), rand(N0f8)))
+nothing

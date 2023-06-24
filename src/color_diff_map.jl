@@ -4,9 +4,7 @@ end
 
 const ϵ = eps(N0f8)
 
-function identity_f(c)
-    convert(Lab{Float64}, c)
-end
+identity_f(c) = convert(Lab{Float64}, c)
 # This function wraps the transform function so that it is guaranteed to use Float64 for computations.
 # Converts to Lab because the transform is only intended for use immediately prior to calling colordiff,
 # which would convert to Lab anyways.
@@ -19,13 +17,15 @@ struct ColorDiffMap
     transform  # This is a function to be applied TO BOTH COLORS before computing the distance between them. Intended for color vision deficiencies
     ColorDiffMap(transform = identity) = new(fill(Inf64, 256, 256, 256), transform_to_f(transform))
     ColorDiffMap(a::Array{Float64, 3}, transform = identity) = new(a, transform_to_f(transform))
-    ColorDiffMap(path::String) = BSON.load(path)[:color_dist_map]
+    ColorDiffMap(path::String) = BSON.load(path)[:color_diff_map]
 end
 
 Base.Broadcast.broadcastable(map::ColorDiffMap) = Ref(map)
 
 Colors.colordiff(map::ColorDiffMap, color::RGB{N0f8}) = map.array[color.r.i+1, color.g.i+1, color.b.i+1]
 Colors.colordiff(map::ColorDiffMap, color) = colordiff(map, convert(RGB{N0f8}, color))
+
+get_f(map::ColorDiffMap) = map.transform
 
 const n0f8s = zero(N0f8):eps(N0f8):one(N0f8)
 
@@ -183,6 +183,10 @@ function add_colors!(map::ColorDiffMap, colors)
     finish!(p)  # If one or more colors is already computed, the progress meter will not finish
     println()
     return update_log
+end
+
+function save(map::ColorDiffMap, path::String)
+    bson(path; color_diff_map = map)
 end
 
 #=
