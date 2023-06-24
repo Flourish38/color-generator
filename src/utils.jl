@@ -1,83 +1,92 @@
-include("color_diff_map.jl")
+include("color_dist_map.jl")
 using Random
 using TravelingSalesmanHeuristics
 
-Colors.colordiff(::Nothing, _) = Inf64
-get_f(map::Nothing) = identity_f
-
-@views function score(colors::Vector{RGB{N0f8}}, seed::Vector{<:Color}=RGB{N0f8}[]; map::Union{Nothing, ColorDiffMap}=nothing)
-    min_diff::Float64 = minimum(colordiff(map, c) for c in colors)
-    f = get_f(map)
-    all_colors = vcat(colors, seed)
-    for i in eachindex(colors)
-        cd = let c = colors[i]
-            x -> colordiff(f(c), f(x))
+@views function score(colors::Vector{RGB{N0f8}}, map_weights::Vector{Tuple{ColorDistMap, Float64}})
+    min_dist::Float64 = minimum(weight * dist_map.(colors) for (dist_map, weight) in map_weights)
+    for (dist_map, weight) in map_weights
+        for i in eachindex(colors)
+            cd = let c = dist_map.f(colors[i])
+                x -> weight * dist_map.distance(c, f(x))
+            end
+            #f(x::RGB{N0f8})::Float64 = colordiff(c, x)  # The let block is actually a smidge faster, kinda cool
+            min_dist = minimum(cd, colors[i+1:end]; init=min_dist)
         end
-        #f(x::RGB{N0f8})::Float64 = colordiff(c, x)  # The let block is actually a smidge faster, kinda cool
-        min_diff = minimum(cd, all_colors[i+1:end]; init=min_diff)
     end
-    return min_diff
+    return min_dist
 end
 
-@views function get_scores(colors::Vector{RGB{N0f8}}, seed::Vector{<:Color}=RGB{N0f8}[]; map::Union{Nothing, ColorDiffMap}=nothing)
+@views function get_scores(colors::Vector{RGB{N0f8}}, map_weights::Vector{Tuple{ColorDistMap, Float64}})
     scores = Vector{Tuple{Float64, Int}}(undef, length(colors))
-    f = get_f(map)
-    all_colors = vcat(colors, seed)
+
     for (i, c) in enumerate(colors)
-        min_diff = colordiff(map, c)
-        min_diff_index = i
-        if i < length(all_colors)
-            cd(x) = colordiff(f(x), f(c))
-            diff, j = findmin(cd, all_colors[i+1:end])
-            if diff < min_diff
-                min_diff = diff
-                if i + j <= length(colors)  # If the minimum difference is with a seed color, since we can't change that color, we shouldn't point to it.
-                    min_diff_index = i + j  # This confirms that the difference is not with a seed color.
+        min_dist = Inf64
+        min_dist_index = i
+        for (dist_map, weight) in map_weights
+            map_dist = weight * dist_map(c)
+            if map_dist < min_dist
+                min_dist = map_dist
+                min_dist_index = i
+            end
+            c = dist_map.f(c)
+            if i < length(colors)
+                cd(x) = weight * dist_map.distance(dist_map.f(x), c)
+                dist, j = findmin(cd, colors[i+1:end])
+                if dist < min_dist
+                    min_dist = dist
+                    min_dist_index = i + j
                 end
             end
         end
-        scores[i] = (min_diff, min_diff_index)
+        scores[i] = (min_dist, min_dist_index)
     end
     scores
 end
 
-@views function update_scores!(scores::Vector{Tuple{Float64, Int}}, updated_index, colors::Vector{RGB{N0f8}}, seed::Vector{<:Color}=RGB{N0f8}[]; map::Union{Nothing, ColorDiffMap}=nothing)
+@views function update_scores!(scores::Vector{Tuple{Float64, Int}}, updated_index, colors::Vector{RGB{N0f8}}, map_weights::Vector{Tuple{ColorDistMap, Float64}})
+    recompute = trues(size(colors))
     c_updated = colors[updated_index]
-    f = get_f(map)
-    cd(x)::Float64 = colordiff(f(x), f(c_updated))
-    all_colors = vcat(colors, seed)
+    updated_dist = minimum(weight * dist_map(c_updated) for (dist_map, weight) in map_weights)
+    updated_dist_i = updated_index
+    for (dist_map, weight) in map_weights
+        fc_updated = dist_map.f(c_updated)
+        cd(c) = weight * dist_map.distance(dist_map.f(c), fc_updated)
+        dist, dist_i = updated_index < length(colors) ? findmin(cd, colors[updated_index+1:end]) : (Inf, 0)
+        dist_i += updated_index
+        if dist < updated_dist
+            updated_dist = dist
+            updated_dist_i = dist_i
+        end
 
-    for (i, c) in enumerate(colors[1:updated_index-1])
-        prev_diff, prev_diff_i = scores[i]
-        diff = cd(c)
-        if diff < prev_diff
-            scores[i] = (diff, updated_index)
-        elseif prev_diff_i == updated_index  # Have to recompute minimum for this element
-            cd_sub(x)::Float64 = colordiff(f(x), f(c))
-            new_diff, new_diff_i = findmin(cd_sub, all_colors[i+1:end])  # This does recompute the difference between the updated color and the recomputing color, sadly.
-            new_diff_i += i
-            if new_diff_i > length(colors)
-                new_diff_i = i
+        for (i, c) in enumerate(colors[1:updated_index - 1])
+            prev_dist, _ = scores[i]
+            dist = cd(c)
+            if dist <= prev_dist
+                scores[i] = (dist, updated_index)
+                recompute[i] = false
             end
-            map_diff = colordiff(map, c)
-            if map_diff < new_diff
-                new_diff = map_diff
-                new_diff_i = i
-            end
-            scores[i] = (new_diff, new_diff_i)
         end
     end
-    updated_diff, updated_diff_i = updated_index < length(all_colors) ? findmin(cd, all_colors[updated_index+1:end]) : (Inf, 0)
-    updated_diff_i += updated_index
-    if updated_diff_i > length(colors)
-        updated_diff_i = updated_index
+    scores[updated_index] = (updated_dist, updated_dist_i)
+    
+    for (i, c) in enumerate(colors[1:updated_index - 1])
+        _, prev_dist_i = scores[i]
+        if prev_dist_i == updated_index && recompute[i]
+            new_dist = minimum(weight * dist_map(c) for (dist_map, weight) in map_weights)
+            new_dist_i = i
+            for (dist_map, weight) in map_weights
+                fc = dist_map.f(c)
+                cd(x) = weight * dist_map.distance(fc, dist_map.f(x))
+                dist, dist_i = findmin(cd, colors[i+1:end])  # This does recompute the difference between the updated color and the recomputing color, sadly.
+                dist_i += i
+                if dist < new_dist
+                    new_dist = dist
+                    new_dist_i = dist_i
+                end
+            end
+            scores[i] = (new_dist, new_dist_i)
+        end
     end
-    map_diff = colordiff(map, c_updated)
-    if map_diff < updated_diff  # if updated_index == length(colors), this will always be true
-        updated_diff = map_diff
-        updated_diff_i = updated_index
-    end
-    scores[updated_index] = (updated_diff, updated_diff_i)
     return
 end
 
@@ -184,7 +193,7 @@ end
 Base.transpose(x::Colorant) = x
 function display_colors(colors, diff_map)
     println(collect(map(x -> "#" * hex(x), colors)))
-    if diff_map.transform == identity_f
+    if diff_map.transform == default_f
         display_cols = hcat(colors, fill(colorant"black", length(colors)))
         display_cols = hcat(display_cols, tsp_order(colors, diff_map))
         display(transpose(display_cols))
