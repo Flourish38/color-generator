@@ -218,45 +218,45 @@ end
 
 all_discord_colors = collect(union(all_darkened_sat_colors, all_lightened_sat_colors, all_base_sat_colors)); @show length(all_discord_colors)
 
-include("color_diff_map.jl")
+include("color_dist_map.jl")
 begin
-    discord_diff_map = if isfile("discord_diff_map.bson")
-        ColorDiffMap("discord_diff_map.bson")
+    discord_dist_map = if isfile("discord_dist_map.bson")
+        ColorDistMap("discord_dist_map.bson")
     else
-        _map = ColorDiffMap()
+        _map = ColorDistMap()
         println("Computing discord color map. This will take a while, but the ETA will shrink rapidly as the computation proceeds. On my machine, it takes 3-7 minutes.")
         add_colors!(_map, all_discord_colors)
-        save(_map, "discord_diff_map.bson")
+        save(_map, "discord_dist_map.bson")
         _map
     end
     nothing
 end
 if true
-    discord_diff_map_prot = if isfile("discord_diff_map_prot.bson")
-        ColorDiffMap("discord_diff_map_prot.bson")
+    discord_dist_map_prot = if isfile("discord_dist_map_prot.bson")
+        ColorDistMap("discord_dist_map_prot.bson")
     else
-        _map = ColorDiffMap(protanopic)
+        _map = ColorDistMap(lab(protanopic))
         println("Computing protanopic discord color map.")
         add_colors!(_map, all_discord_colors)
-        save(_map, "discord_diff_map_prot.bson")
+        save(_map, "discord_dist_map_prot.bson")
         _map
     end
-    discord_diff_map_deut = if isfile("discord_diff_map_deut.bson")
-        ColorDiffMap("discord_diff_map_deut.bson")
+    discord_dist_map_deut = if isfile("discord_dist_map_deut.bson")
+        ColorDistMap("discord_dist_map_deut.bson")
     else
-        _map = ColorDiffMap(deuteranopic)
+        _map = ColorDistMap(lab(deuteranopic))
         println("Computing deuteranopic discord color map.")
         add_colors!(_map, all_discord_colors)
-        save(_map, "discord_diff_map_deut.bson")
+        save(_map, "discord_dist_map_deut.bson")
         _map
     end
-    discord_diff_map_prot = if isfile("discord_diff_map_trit.bson")
-        ColorDiffMap("discord_diff_map_trit.bson")
+    discord_dist_map_trit = if isfile("discord_dist_map_trit.bson")
+        ColorDistMap("discord_dist_map_trit.bson")
     else
-        _map = ColorDiffMap(tritanopic)
+        _map = ColorDistMap(lab(tritanopic))
         println("Computing tritanopic discord color map.")
         add_colors!(_map, all_discord_colors)
-        save(_map, "discord_diff_map_trit.bson")
+        save(_map, "discord_dist_map_trit.bson")
         _map
     end
     nothing

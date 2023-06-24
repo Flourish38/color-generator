@@ -1,5 +1,109 @@
+using Dates
 include("utils.jl")
 
+function thresh_distinguishable_colors(map_threshs::Vector{Tuple{ColorDistMap, Float64}}, per_color_duration = Minute(1), refinement_duration = Minute(5))
+    colors = [rand_color()]
+    map_weights = [(map, 1.0/thresh) for (map, thresh) in map_threshs]
+    best_colors = deepcopy(colors)
+    prog = ProgressUnknown("Number of iterations:"; dt=1, showspeed=true)
+    while refine_colors_thresh!(colors, map_weights, per_color_duration, prog)
+        best_colors = deepcopy(colors)
+        sort!(best_colors, by = x -> LCHab(x).h)
+        push!(colors, rand_color())
+    end
+    refine_colors!(best_colors, map_weights, refinement_duration, prog)
+    finish!(prog; showvalues=zip(["score[$i]" for i in 1:4],score(best_colors, map_threshs)))
+    return best_colors
+end
+
+ProgressMeter.next!(::Nothing, args...; kwargs...) = nothing
+# If the score is >= 1, or it takes max_its iterations, this function returns.
+function refine_colors_thresh!(colors, map_weights, max_duration, prog=ProgressUnknown("Number of iterations:"; dt=1, showspeed=true))
+    end_time = now() + max_duration
+    scores = get_scores(colors, map_weights)
+    (score, indices) = find_min_score(scores)
+    while score < 1.0
+        if now() >= end_time
+            return false
+        end
+        updated_index = update_index!(colors, map_weights, score, indices)
+        update_scores!(scores, updated_index, colors, map_weights)
+        (score, indices) = find_min_score(scores)
+        next!(prog; showvalues=() -> ((:trying_n, length(colors)), (:score, score), (:time_remaining, canonicalize(end_time - now()))))
+    end
+    return true
+end
+
+function refine_colors!(colors, map_weights, max_duration, prog=ProgressUnknown("Number of iterations:"; dt=1, showspeed=true))
+    end_time = now() + max_duration
+    scores = get_scores(colors, map_weights)
+    (score, indices) = find_min_score(scores)
+    best_score = score
+    local_colors = deepcopy(colors)
+    while true
+        if now() >= end_time
+            return
+        end
+        updated_index = update_index!(local_colors, map_weights, score, indices)
+        update_scores!(scores, updated_index, local_colors, map_weights)
+        (score, indices) = find_min_score(scores)
+        if score > best_score
+            best_score = score
+            copy!(colors, local_colors)
+            sort!(colors, by = x -> LCHab(x).h)
+        end
+        next!(prog; showvalues=() -> ((:score, score), (:best_score, best_score), (:time_remaining, canonicalize(end_time - now()))))
+    end
+end
+
+function update_index!(colors, map_weights, score, indices)
+    times_to_loop = 1000
+    if indices[1] == indices[2]
+        index_to_update = indices[1]
+        c_before_update = colors[index_to_update]
+        #=
+        new_colors = [nudge_color(c_before_update) for _ in 1:times_to_loop]
+        scores = [minimum(weight * dist_map(c) for (dist_map, weight) in map_weights) for c in new_colors]
+        i = argmax(scores)
+        colors[index_to_update] = new_colors[i]
+        # =#
+        
+        for n in 1:times_to_loop
+            colors[index_to_update] = nudge_color(c_before_update)
+            if n < times_to_loop
+                dist = minimum(weight * dist_map(colors[index_to_update]) for (dist_map, weight) in map_weights)
+                if dist > score
+                    break 
+                end
+            end
+        end
+        # =#
+    else
+        index_to_update = rand(indices)
+        c_before_update = colors[index_to_update]
+        c_other = colors[indices[1] == index_to_update ? indices[2] : indices[1]]
+        #=
+        new_colors = [nudge_color(c_before_update) for _ in 1:times_to_loop]
+        scores = [minimum(weight * dist_map.distance(dist_map.f(c_other), dist_map.f(c)) for (dist_map, weight) in map_weights) for c in new_colors]
+        i = argmax(scores)
+        colors[index_to_update] = new_colors[i]
+        # =#
+        
+        for n in 1:times_to_loop
+            colors[index_to_update] = nudge_color(c_before_update)
+            if n < times_to_loop
+                dist = minimum(weight * dist_map.distance(dist_map.f(c_other), dist_map.f(colors[index_to_update])) for (dist_map, weight) in map_weights)
+                if dist > score
+                    break
+                end
+            end
+        end
+        # =#
+    end
+    return index_to_update
+end
+
+#=
 function so_distinguishable_colors(n::Int, seed::Vector{<:Color}=RGB{N0f8}[]; its=-1, thresh=-1, map::Union{Nothing, ColorDiffMap}=nothing)
     colors = [rand_color() for _ in 1:n]
     scores = get_scores(colors, seed; map=map)
@@ -49,3 +153,4 @@ function so_distinguishable_colors(n::Int, seed::Vector{<:Color}=RGB{N0f8}[]; it
     finish!(prog; showvalues = ((:score, score), (:best_score, best_score), (:last_improvement, last_improvement)))
     return sort(best_colors, by = x -> LCHab(x).h)
 end
+=#
