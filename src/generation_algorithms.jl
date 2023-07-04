@@ -8,12 +8,11 @@ function thresh_distinguishable_colors(map_threshs::Vector{Tuple{ColorDistMap, F
     prog = ProgressUnknown("Number of iterations:"; dt=1, showspeed=true)
     while refine_colors_thresh!(colors, map_weights, per_color_duration, prog)
         best_colors = deepcopy(colors)
-        sort!(best_colors, by = x -> LCHab(x).h)
         push!(colors, rand_color())
     end
-    refine_colors!(best_colors, map_weights, refinement_duration, prog)
+    refine_colors_local!(best_colors, map_weights, refinement_duration, 300, prog)
     finish!(prog; showvalues=zip(["score[$i]" for i in 1:4],score(best_colors, map_threshs)))
-    return best_colors
+    return sort(best_colors, by = x -> LCHab(x).h)
 end
 
 ProgressMeter.next!(::Nothing, args...; kwargs...) = nothing
@@ -34,30 +33,52 @@ function refine_colors_thresh!(colors, map_weights, max_duration, prog=ProgressU
     return true
 end
 
-function refine_colors!(colors, map_weights, max_duration, prog=ProgressUnknown("Number of iterations:"; dt=1, showspeed=true))
-    end_time = now() + max_duration
-    scores = get_scores(colors, map_weights)
+function refine_colors!(colors, map_weights, max_duration, prog=ProgressUnknown("Number of iterations:"; dt=1, showspeed=true); init_scores=nothing)
+    if (max_duration isa Period)
+        end_time = now() + max_duration    
+    end
+    scores = init_scores
+    if isnothing(init_scores)
+        scores = get_scores(colors, map_weights)
+    end
     (score, indices) = find_min_score(scores)
     best_score = score
     local_colors = deepcopy(colors)
+    n = 0
     while true
-        if now() >= end_time
+        if (max_duration isa Period && now() >= end_time) || (max_duration isa Number && n >= max_duration)
             return
         end
+        n += 1
         updated_index = update_index!(local_colors, map_weights, score, indices)
         update_scores!(scores, updated_index, local_colors, map_weights)
         (score, indices) = find_min_score(scores)
         if score > best_score
             best_score = score
             copy!(colors, local_colors)
-            sort!(colors, by = x -> LCHab(x).h)
         end
-        next!(prog; showvalues=() -> ((:score, score), (:best_score, best_score), (:time_remaining, canonicalize(end_time - now()))))
+        next!(prog; showvalues=() -> ((:score, score), (:best_score, best_score), (:time_remaining, max_duration isa Period ? canonicalize(end_time - now()) : max_duration - n)))
+    end
+end
+
+function refine_colors_local!(colors, map_weights, max_duration, sub_iters=100, prog=ProgressUnknown("Number of iterations:"; dt=1, showspeed=true))
+    end_time = now() + max_duration
+    scores = get_scores(colors, map_weights)
+    while true
+        if now() >= end_time
+            return
+        end
+        local_scores = deepcopy(scores)
+        refine_colors!(colors, map_weights, sub_iters, prog; init_scores=local_scores)
+        if local_scores != scores
+            scores = get_scores(colors, map_weights)
+        end
+        #next!(prog; showvalues=() -> ((:score, score), (:best_score, best_score), (:time_remaining, canonicalize(end_time - now()))))
     end
 end
 
 function update_index!(colors, map_weights, score, indices)
-    times_to_loop = 1000
+    times_to_loop = 100
     if indices[1] == indices[2]
         index_to_update = indices[1]
         c_before_update = colors[index_to_update]
@@ -153,4 +174,4 @@ function so_distinguishable_colors(n::Int, seed::Vector{<:Color}=RGB{N0f8}[]; it
     finish!(prog; showvalues = ((:score, score), (:best_score, best_score), (:last_improvement, last_improvement)))
     return sort(best_colors, by = x -> LCHab(x).h)
 end
-=#
+# =#

@@ -19,19 +19,31 @@ end
 begin
     discord_dist_map_threshs = [
         (discord_dist_map, 20.0),
-        (discord_dist_map_prot, 15.0),
-        (discord_dist_map_deut, 15.0),
-        (discord_dist_map_trit, 15.0)
+        (discord_dist_map_prot, 10.0),
+        (discord_dist_map_deut, 10.0),
+        (discord_dist_map_trit, 10.0)
     ]
     discord_dist_map_weights = map_threshs_to_weights(discord_dist_map_threshs)
-    colors = thresh_distinguishable_colors(discord_dist_map_threshs)
+    colors = thresh_distinguishable_colors(discord_dist_map_threshs, Minute(1), Minute(1))
+    sort!(colors, by = x -> LCHab(x).h)
     display_colors(colors, discord_dist_map_weights)
 end
 
 begin
-    prev_score = w_score(colors, discord_dist_map_weights)
+    prev_score = @show w_score(colors, discord_dist_map_weights)
     refine_colors!(colors, discord_dist_map_weights, Minute(15))
     if w_score(colors, discord_dist_map_weights) != prev_score
+        sort!(colors, by = x -> LCHab(x).h)
+        println()
+        display_colors(colors, discord_dist_map_weights)
+    end
+end
+
+begin
+    prev_score = @show w_score(colors, discord_dist_map_weights)
+    refine_colors_local!(colors, discord_dist_map_weights, Minute(45), 30000)
+    if w_score(colors, discord_dist_map_weights) != prev_score
+        sort!(colors, by = x -> LCHab(x).h)
         println()
         display_colors(colors, discord_dist_map_weights)
     end

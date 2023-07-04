@@ -200,6 +200,18 @@ const nudges = (
 )
 nudge_color(x::RGB{N0f8}) = RGB{N0f8}((rgb(x) .+ rand(nudges))...)
 
+function maybe_nudge_colors(colors::Vector{RGB{N0f8}}, indices, frac=rand())
+    new_colors = similar(colors)
+    for (i, c) in enumerate(colors) 
+        if i in indices || rand() <= frac
+            new_colors[i] = nudge_color(c)
+        else
+            new_colors[i] = c
+        end
+    end
+    return new_colors
+end
+
 function tsp_order(colors, diff_map::Union{Nothing, ColorDistMap})
     f = get_f(diff_map)
     D = [colordiff(f(c1), f(c2)) for c1 in colors, c2 in colors]
