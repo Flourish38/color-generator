@@ -33,13 +33,13 @@ function refine_colors_thresh!(colors, map_weights, max_duration, prog=ProgressU
     return true
 end
 
-function refine_colors!(colors, map_weights, max_duration, prog=ProgressUnknown("Number of iterations:"; dt=1, showspeed=true); init_scores=nothing)
+function refine_colors!(colors, map_weights, max_duration, prog=ProgressUnknown("Number of iterations:"; dt=1, showspeed=true); init_scores=nothing, num_unlocked=length(colors))
     if (max_duration isa Period)
         end_time = now() + max_duration    
     end
     scores = init_scores
     if isnothing(init_scores)
-        scores = get_scores(colors, map_weights)
+        scores = get_scores(colors, map_weights, num_unlocked)
     end
     (score, indices) = find_min_score(scores)
     best_score = score
@@ -51,7 +51,7 @@ function refine_colors!(colors, map_weights, max_duration, prog=ProgressUnknown(
         end
         n += 1
         updated_index = update_index!(local_colors, map_weights, score, indices)
-        update_scores!(scores, updated_index, local_colors, map_weights)
+        update_scores!(scores, updated_index, local_colors, map_weights, num_unlocked)
         (score, indices) = find_min_score(scores)
         if score > best_score
             best_score = score
@@ -61,19 +61,21 @@ function refine_colors!(colors, map_weights, max_duration, prog=ProgressUnknown(
     end
 end
 
-function refine_colors_local!(colors, map_weights, max_duration, sub_iters=100, prog=ProgressUnknown("Number of iterations:"; dt=1, showspeed=true))
+function refine_colors_local!(colors, map_weights, max_duration, sub_iters=100, prog=ProgressUnknown("Number of iterations:"; dt=1, showspeed=true); num_unlocked=length(colors))
     end_time = now() + max_duration
-    scores = get_scores(colors, map_weights)
+    scores = get_scores(colors, map_weights, num_unlocked)
+    (best_score, _) = find_min_score(scores)
     while true
         if now() >= end_time
             return
         end
         local_scores = deepcopy(scores)
-        refine_colors!(colors, map_weights, sub_iters, prog; init_scores=local_scores)
+        refine_colors!(colors, map_weights, sub_iters; init_scores=local_scores, num_unlocked = num_unlocked)
         if local_scores != scores
-            scores = get_scores(colors, map_weights)
+            scores = get_scores(colors, map_weights, n)
+            (best_score, _) = find_min_score(scores)
         end
-        #next!(prog; showvalues=() -> ((:score, score), (:best_score, best_score), (:time_remaining, canonicalize(end_time - now()))))
+        next!(prog, step=sub_iters; showvalues=() -> ((:score, find_min_score(local_scores)[1]), (:best_score, best_score), (:time_remaining, canonicalize(end_time - now()))))
     end
 end
 

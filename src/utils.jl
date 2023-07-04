@@ -2,13 +2,13 @@ include("color_dist_map.jl")
 using Random
 using TravelingSalesmanHeuristics
 
-w_score(colors::Vector{RGB{N0f8}}, map_weights::Vector{Tuple{ColorDistMap, Float64}}) = (x -> x[2]).(map_weights) .* score(colors, map_weights)
+w_score(colors::Vector{RGB{N0f8}}, map_weights::Vector{Tuple{ColorDistMap, Float64}}, n=length(colors)) = (x -> x[2]).(map_weights) .* score(colors, map_weights, n)
 
 
-@views function score(colors::Vector{RGB{N0f8}}, maps::Vector{ColorDistMap})
-    min_dists = [minimum(dist_map.(colors)) for dist_map in maps]
+@views function score(colors::Vector{RGB{N0f8}}, maps::Vector{ColorDistMap}, n=length(colors))
+    min_dists = [minimum(dist_map, Iterators.take(colors, n)) for dist_map in maps]
     for (i, dist_map) in enumerate(maps)
-        for j in eachindex(colors)
+        for j in Iterators.take(eachindex(colors), n)
             cd = let c = dist_map.f(colors[j])
                 x -> dist_map.distance(c, dist_map.f(x))
             end
@@ -18,14 +18,14 @@ w_score(colors::Vector{RGB{N0f8}}, map_weights::Vector{Tuple{ColorDistMap, Float
     return min_dists
 end
 
-function score(colors::Vector{RGB{N0f8}}, map_weights::Vector{Tuple{ColorDistMap, Float64}})
-    return score(colors, first.(map_weights))
+function score(colors::Vector{RGB{N0f8}}, map_weights::Vector{Tuple{ColorDistMap, Float64}}, n=length(colors))
+    return score(colors, first.(map_weights), n)
 end
 
-@views function get_scores(colors::Vector{RGB{N0f8}}, map_weights::Vector{Tuple{ColorDistMap, Float64}})
-    scores = Vector{Tuple{Float64, Int}}(undef, length(colors))
+@views function get_scores(colors::Vector{RGB{N0f8}}, map_weights::Vector{Tuple{ColorDistMap, Float64}}, n = length(colors))
+    scores = Vector{Tuple{Float64, Int}}(undef, n)
 
-    for (i, c) in enumerate(colors)
+    for (i, c) in Iterators.take(enumerate(colors), n)
         min_dist = Inf64
         min_dist_index = i
         for (dist_map, weight) in map_weights
@@ -35,22 +35,25 @@ end
                 min_dist_index = i
             end
             fc = dist_map.f(c)
-            if i < length(colors)
+            if i < n
                 cd(x) = weight * dist_map.distance(dist_map.f(x), fc)
                 dist, j = findmin(cd, colors[i+1:end])
                 if dist < min_dist
                     min_dist = dist
-                    min_dist_index = i + j
+                    min_dist_index = i + j  # This might be > n, which is not what we want
                 end
             end
+        end
+        if min_dist_index > n  # This fixes that issue
+            min_dist_index = i
         end
         scores[i] = (min_dist, min_dist_index)
     end
     scores
 end
 
-@views function update_scores!(scores::Vector{Tuple{Float64, Int}}, updated_index, colors::Vector{RGB{N0f8}}, map_weights::Vector{Tuple{ColorDistMap, Float64}})
-    recompute = trues(size(colors))
+@views function update_scores!(scores::Vector{Tuple{Float64, Int}}, updated_index, colors::Vector{RGB{N0f8}}, map_weights::Vector{Tuple{ColorDistMap, Float64}}, n = length(scores))
+    recompute = trues(n)
     c_updated = colors[updated_index]
     #u_lock = Threads.SpinLock()
     #score_locks = [Threads.SpinLock() for _ in 1:updated_index - 1]
@@ -60,8 +63,8 @@ end
     for (dist_map, weight) in map_weights
         fc_updated = dist_map.f(c_updated)
         cd(c) = weight * dist_map.distance(dist_map.f(c), fc_updated)
-        dist, dist_i = updated_index < length(colors) ? findmin(cd, colors[updated_index+1:end]) : (Inf, 0)
-        dist_i += updated_index
+        dist, dist_i = updated_index < length(colors) ? findmin(cd, colors[updated_index+1:end]) : (Inf64, 0)
+        dist_i += updated_index  # This could be > n, which is not what we want
         #lock(u_lock) do 
             if dist < updated_dist
                 updated_dist = dist
@@ -80,6 +83,9 @@ end
             #end
         end
     end
+    if updated_dist_i > n
+        updated_dist_i = updated_index
+    end
     scores[updated_index] = (updated_dist, updated_dist_i)
     
     # This loop is embarrassingly parallel, yippee!!!
@@ -87,7 +93,6 @@ end
     #Threads.@threads for i in 1:updated_index - 1
     # Multithreading slower :pensive:
     for (i, c) in enumerate(colors[1:updated_index - 1])
-        c = colors[i]
         _, prev_dist_i = scores[i]
         if prev_dist_i == updated_index && recompute[i]
             new_dist = minimum(weight * dist_map(c) for (dist_map, weight) in map_weights)
@@ -96,11 +101,14 @@ end
                 fc = dist_map.f(c)
                 cd(x) = weight * dist_map.distance(fc, dist_map.f(x))
                 dist, dist_i = findmin(cd, colors[i+1:end])  # This does recompute the difference between the updated color and the recomputing color, sadly.
-                dist_i += i
+                dist_i += i  # This could be > n, which is not what we want
                 if dist < new_dist
                     new_dist = dist
                     new_dist_i = dist_i
                 end
+            end
+            if new_dist_i > n
+                new_dist_i = i 
             end
             scores[i] = (new_dist, new_dist_i)
         end
@@ -210,6 +218,18 @@ function maybe_nudge_colors(colors::Vector{RGB{N0f8}}, indices, frac=rand())
         end
     end
     return new_colors
+end
+
+function move_min_dist_to_end!(colors::Vector{RGB{N0f8}}, indices::Tuple{Int, Int}, n = length(colors))
+    i, j = indices
+    if i == j
+        colors[n], colors[i] = colors[i], colors[n]
+        return n-1
+    else
+        colors[n-1], colors[i] = colors[i], colors[n-1]
+        colors[n], colors[j] = colors[j], colors[n]
+        return n-2
+    end
 end
 
 function tsp_order(colors, diff_map::Union{Nothing, ColorDistMap})

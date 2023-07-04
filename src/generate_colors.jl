@@ -27,24 +27,35 @@ begin
     colors = thresh_distinguishable_colors(discord_dist_map_threshs, Minute(1), Minute(1))
     sort!(colors, by = x -> LCHab(x).h)
     display_colors(colors, discord_dist_map_weights)
+    n = length(colors)
 end
 
 begin
-    prev_score = @show w_score(colors, discord_dist_map_weights)
-    refine_colors!(colors, discord_dist_map_weights, Minute(15))
-    if w_score(colors, discord_dist_map_weights) != prev_score
-        sort!(colors, by = x -> LCHab(x).h)
+    prev_score = @show w_score(colors, discord_dist_map_weights, n)
+    refine_colors!(colors, discord_dist_map_weights, Minute(15); num_unlocked=n)
+    if n == length(colors) && w_score(colors, discord_dist_map_weights, n) != prev_score
         println()
-        display_colors(colors, discord_dist_map_weights)
+        display_colors(sort(colors, by = x -> LCHab(x).h), discord_dist_map_weights)
     end
 end
 
 begin
-    prev_score = @show w_score(colors, discord_dist_map_weights)
-    refine_colors_local!(colors, discord_dist_map_weights, Minute(45), 30000)
-    if w_score(colors, discord_dist_map_weights) != prev_score
-        sort!(colors, by = x -> LCHab(x).h)
+    prev_score = @show w_score(colors, discord_dist_map_weights, n)
+    refine_colors_local!(colors, discord_dist_map_weights, Minute(5), 500; num_unlocked=n)
+    if n == length(colors) && w_score(colors, discord_dist_map_weights, n) != prev_score
         println()
-        display_colors(colors, discord_dist_map_weights)
+        display_colors(sort(colors, by = x -> LCHab(x).h), discord_dist_map_weights)
     end
+end
+
+begin
+    n = move_min_dist_to_end!(colors, find_min_score(get_scores(colors, discord_dist_map_weights, n))[2], n)
+    sort!(@view(colors[1:n]), by = x -> LCHab(x).h)
+    @show n
+    colors
+end
+
+begin
+    println(collect(map(x -> "#" * hex(x), sort(colors, by = x -> LCHab(x).h))))
+    sort(colors, by = x -> LCHab(x).h)
 end
