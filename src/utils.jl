@@ -232,6 +232,35 @@ function move_min_dist_to_end!(colors::Vector{RGB{N0f8}}, indices::Tuple{Int, In
     end
 end
 
+function palette_order(colors, map_weights::Vector{Tuple{ColorDistMap, Float64}})
+    n = length(colors)
+    order = fill(0, n)
+    for i in 1:n
+        best_score = -Inf64
+        best_i = 0
+        for (j, c) in enumerate(colors)
+            if j in order
+                continue
+            end
+            c_score = Inf64
+            for (dist_map, weight) in map_weights
+                fc = dist_map.f(c)
+                cd(x) = weight * dist_map.distance(fc, dist_map.f(x))
+                map_score = minimum(cd, colors[order[1:i-1]]; init=weight * dist_map(c))
+                if map_score < c_score
+                    c_score = map_score
+                end
+            end
+            if c_score > best_score
+                best_score = c_score
+                best_i = j
+            end
+        end
+        order[i] = best_i
+    end
+    return colors[order]
+end
+
 function tsp_order(colors, diff_map::Union{Nothing, ColorDistMap})
     f = get_f(diff_map)
     D = [colordiff(f(c1), f(c2)) for c1 in colors, c2 in colors]
