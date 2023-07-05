@@ -126,12 +126,3 @@ scores:
 =#
 cvd_15_214 = parse.(RGB, ["#EC8697", "#A05742", "#A77800", "#FFBA00", "#9DA854", "#7C7D74", "#456200", "#8DFE74", "#03BF95", "#007A8C", "#589CFF", "#9B8CB8", "#6E40FF", "#FE4BFF", "#A91285"])
 
-
-begin
-    n = 1000
-    so_colors = so_distinguishable_colors(n; thresh=1000000)
-    println()
-    println(collect(map(x -> "#" * hex(x), so_colors)))
-    @show score(so_colors)
-    so_colors
-end

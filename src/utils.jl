@@ -232,6 +232,8 @@ function move_min_dist_to_end!(colors::Vector{RGB{N0f8}}, indices::Tuple{Int, In
     end
 end
 
+hue_order(colors) = sort(colors, by = x -> LCHab(x).h)
+
 function palette_order(colors, map_weights::Vector{Tuple{ColorDistMap, Float64}})
     n = length(colors)
     order = fill(0, n)
@@ -269,10 +271,12 @@ function tsp_order(colors, diff_map::Union{Nothing, ColorDistMap})
     return colors[path[1:length(colors)]]
 end
 
+print_colors(colors) = println(collect(map(x -> "#" * hex(x), colors)))
+
 Base.transpose(x::Colorant) = x
 function display_colors(colors, dist_maps::Vector{ColorDistMap})
     println("score: \t", score(colors, dist_maps))
-    println(collect(map(x -> "#" * hex(x), colors)))
+    print_colors(colors)
     display_cols = colors
     for dist_map in dist_maps
         if dist_map.f == default_f || dist_map.f == identity
