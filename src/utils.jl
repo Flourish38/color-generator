@@ -306,6 +306,8 @@ function contrast_ratio(c1, c2)
     return l1 > l2 ? (l1 + 0.05)/(l2 + 0.05) : (l2 + 0.05)/(l1 + 0.05)
 end
 
+no_distance(_, _) = Inf64
+
 #= = = # unused
 function nudge_color(x::RGB{N0f8}, offset::Tuple{N0f8, N0f8, N0f8})
     return RGB{N0f8}(x.r + offset[1], x.g + offset[2], x.b + offset[3])

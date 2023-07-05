@@ -21,7 +21,8 @@ begin
         (discord_dist_map, 20.0),
         (discord_dist_map_prot, 10.0),
         (discord_dist_map_deut, 10.0),
-        (discord_dist_map_trit, 10.0)
+        (discord_dist_map_trit, 10.0),
+        (discord_dist_map_contrast, 2.0)
     ]
     discord_dist_map_weights = map_threshs_to_weights(discord_dist_map_threshs)
     colors = thresh_distinguishable_colors(discord_dist_map_threshs, Minute(1), Minute(1))

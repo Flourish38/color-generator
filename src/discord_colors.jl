@@ -259,6 +259,16 @@ if true
         save(_map, "discord_dist_map_trit.bson")
         _map
     end
+    discord_dist_map_contrast = if isfile("discord_dist_map_contrast.bson")
+        ColorDistMap("discord_dist_map_contrast.bson")
+    else
+        _map = ColorDistMap(identity, contrast_ratio)
+        println("Computing contrast ratio discord color map.")
+        add_colors!(_map, all_discord_colors)
+        __map = ColorDistMap(_map.array, identity, no_distance)
+        save(__map, "discord_dist_map_contrast.bson")
+        __map
+    end
     nothing
 end
 

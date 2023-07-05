@@ -72,7 +72,7 @@ function refine_colors_local!(colors, map_weights, max_duration, sub_iters=100, 
         local_scores = deepcopy(scores)
         refine_colors!(colors, map_weights, sub_iters; init_scores=local_scores, num_unlocked = num_unlocked)
         if local_scores != scores
-            scores = get_scores(colors, map_weights, n)
+            scores = get_scores(colors, map_weights, num_unlocked)
             (best_score, _) = find_min_score(scores)
         end
         next!(prog, step=sub_iters; showvalues=() -> ((:score, find_min_score(local_scores)[1]), (:best_score, best_score), (:time_remaining, canonicalize(end_time - now()))))
