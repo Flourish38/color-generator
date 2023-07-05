@@ -294,6 +294,18 @@ end
 
 map_threshs_to_weights(map_threshs) = [(dist_map, 1.0/thresh) for (dist_map, thresh) in map_threshs]
 
+# WCAG contrast ratio.
+# source: https://www.w3.org/TR/WCAG20-TECHS/G17.html
+undo_srgb(x) = x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ^ 2.4
+const contrast_ratio_coeffs = (0.2126, 0.7152, 0.0722)
+relative_luminance(c) = sum(contrast_ratio_coeffs .* undo_srgb.(rgb(c)))
+
+function contrast_ratio(c1, c2)
+    l1 = relative_luminance(c1)
+    l2 = relative_luminance(c2)
+    return l1 > l2 ? (l1 + 0.05)/(l2 + 0.05) : (l2 + 0.05)/(l1 + 0.05)
+end
+
 #= = = # unused
 function nudge_color(x::RGB{N0f8}, offset::Tuple{N0f8, N0f8, N0f8})
     return RGB{N0f8}(x.r + offset[1], x.g + offset[2], x.b + offset[3])
