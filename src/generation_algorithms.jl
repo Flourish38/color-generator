@@ -10,7 +10,7 @@ function thresh_distinguishable_colors(map_threshs::Vector{Tuple{ColorDistMap, F
         best_colors = deepcopy(colors)
         push!(colors, rand_color())
     end
-    refine_colors_local!(best_colors, map_weights, refinement_duration, 300, prog)
+    refine_colors_local!(best_colors, map_weights, refinement_duration, prog)
     finish!(prog; showvalues=zip(["score[$i]" for i in 1:4],score(best_colors, map_threshs)))
     return sort(best_colors, by = x -> LCHab(x).h)
 end
@@ -33,7 +33,7 @@ function refine_colors_thresh!(colors, map_weights, max_duration, prog=ProgressU
     return true
 end
 
-function refine_colors!(colors, map_weights, max_duration, prog=ProgressUnknown("Number of iterations:"; dt=1, showspeed=true); init_scores=nothing, num_unlocked=length(colors))
+function refine_colors!(colors, map_weights, max_duration, prog=ProgressUnknown("Number of iterations:"; dt=1, showspeed=true); init_scores=nothing, num_unlocked=length(colors), continuing=false)
     if (max_duration isa Period)
         end_time = now() + max_duration    
     end
@@ -45,37 +45,86 @@ function refine_colors!(colors, map_weights, max_duration, prog=ProgressUnknown(
     best_score = score
     local_colors = deepcopy(colors)
     n = 0
+    found_improvement = false
     while true
         if (max_duration isa Period && now() >= end_time) || (max_duration isa Number && n >= max_duration)
-            return
+            return found_improvement
         end
         n += 1
         updated_index = update_index!(local_colors, map_weights, score, indices)
         update_scores!(scores, updated_index, local_colors, map_weights, num_unlocked)
         (score, indices) = find_min_score(scores)
         if score > best_score
+            found_improvement = true
             best_score = score
             copy!(colors, local_colors)
+            if continuing
+                if (max_duration isa Period)
+                    end_time = now() + max_duration    
+                end
+                n = 0
+            end
         end
         next!(prog; showvalues=() -> ((:score, score), (:best_score, best_score), (:time_remaining, max_duration isa Period ? canonicalize(end_time - now()) : max_duration - n)))
     end
 end
 
-function refine_colors_local!(colors, map_weights, max_duration, sub_iters=100, prog=ProgressUnknown("Number of iterations:"; dt=1, showspeed=true); num_unlocked=length(colors))
+function ilog2(x::T) where T <: Integer
+    if x <= 1
+        return 0
+    end
+    n = sizeof(T)*4  # *4 because it's in bytes, not bits >.>
+    shift = n
+    while true
+        temp = x >> shift
+        if temp == 1
+            return shift
+        end
+        n ÷= 2
+        if temp != 0
+            shift += n
+        else
+            shift -= n
+        end
+    end
+end
+
+#=
+begin
+    function test_ilog2()
+        x = rand(UInt)
+        floor(log2(x)) == ilog2(x)
+    end
+    @assert all(test_ilog2() for _ in 1:1000000000)
+end
+=#
+
+function refine_colors_local!(colors, map_weights, max_duration, prog=ProgressUnknown("Number of iterations:"; dt=1, showspeed=true); num_unlocked=length(colors), continuing=false)
     end_time = now() + max_duration
     scores = get_scores(colors, map_weights, num_unlocked)
     (best_score, _) = find_min_score(scores)
+    sub_iters = 1
+    i = 3*ilog2(sub_iters)
+    found_improvement = false
     while true
         if now() >= end_time
-            return
+            return found_improvement
         end
         local_scores = deepcopy(scores)
-        refine_colors!(colors, map_weights, sub_iters; init_scores=local_scores, num_unlocked = num_unlocked)
-        if local_scores != scores
+        if refine_colors!(colors, map_weights, sub_iters; init_scores=local_scores, num_unlocked = num_unlocked)
+            found_improvement = true
             scores = get_scores(colors, map_weights, num_unlocked)
             (best_score, _) = find_min_score(scores)
+            if continuing
+                end_time = now() + max_duration
+            end
         end
         next!(prog, step=sub_iters; showvalues=() -> ((:score, find_min_score(local_scores)[1]), (:best_score, best_score), (:time_remaining, canonicalize(end_time - now()))))
+        i -= 1
+        if i == 0
+            sub_iters += 1
+            i = 3*ilog2(sub_iters)
+        end
     end
 end
 
@@ -124,6 +173,19 @@ function update_index!(colors, map_weights, score, indices)
         # =#
     end
     return index_to_update
+end
+
+function refine_all_colors!(colors, map_weights, max_duration_per, prog=ProgressUnknown("Number of iterations:"; dt=1, showspeed=true); num_unlocked=length(colors), continuing=false)
+    n = num_unlocked
+    while true
+        n = move_min_dist_to_end!(colors, find_min_score(get_scores(colors, map_weights, n))[2], n)
+        if !(n > 0)
+            return
+        end
+        refine_colors_local!(colors, map_weights, max_duration_per, prog; num_unlocked=n, continuing=continuing)
+    end
+    
+
 end
 
 #=

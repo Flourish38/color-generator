@@ -33,7 +33,7 @@ end
 
 begin
     prev_score = @show w_score(colors, discord_dist_map_weights, n)
-    refine_colors!(colors, discord_dist_map_weights, Minute(15); num_unlocked=n)
+    refine_colors!(colors, discord_dist_map_weights, Minute(15); num_unlocked=n, continuing=true)
     if n == length(colors) && w_score(colors, discord_dist_map_weights, n) != prev_score
         println()
         display_colors(hue_order(colors), discord_dist_map_weights)
@@ -42,7 +42,7 @@ end
 
 begin
     prev_score = @show w_score(colors, discord_dist_map_weights, n)
-    refine_colors_local!(colors, discord_dist_map_weights, Minute(5), 500; num_unlocked=n)
+    refine_colors_local!(colors, discord_dist_map_weights, Second(600); num_unlocked=n, continuing=true)
     if n == length(colors) && w_score(colors, discord_dist_map_weights, n) != prev_score
         println()
         display_colors(hue_order(colors), discord_dist_map_weights)
@@ -56,7 +56,11 @@ begin
     colors
 end
 
+refine_all_colors!(colors, discord_dist_map_weights, Second(120); continuing=true)
+
 begin
     print_colors(hue_order(colors))
     hue_order(colors)
 end
+
+backup_colors = deepcopy(colors)

@@ -233,7 +233,7 @@ begin
 end
 if true
     discord_dist_map_prot = if isfile("discord_dist_map_prot.bson")
-        ColorDistMap("discord_dist_map_prot.bson")
+        ColorDistMap("discord_dist_map_prot.bson", lab(protanopic))
     else
         _map = ColorDistMap(lab(protanopic))
         println("Computing protanopic discord color map.")
@@ -242,7 +242,7 @@ if true
         _map
     end
     discord_dist_map_deut = if isfile("discord_dist_map_deut.bson")
-        ColorDistMap("discord_dist_map_deut.bson")
+        ColorDistMap("discord_dist_map_deut.bson", lab(deuteranopic))
     else
         _map = ColorDistMap(lab(deuteranopic))
         println("Computing deuteranopic discord color map.")
@@ -251,7 +251,7 @@ if true
         _map
     end
     discord_dist_map_trit = if isfile("discord_dist_map_trit.bson")
-        ColorDistMap("discord_dist_map_trit.bson")
+        ColorDistMap("discord_dist_map_trit.bson", lab(tritanopic))
     else
         _map = ColorDistMap(lab(tritanopic))
         println("Computing tritanopic discord color map.")
@@ -260,7 +260,7 @@ if true
         _map
     end
     discord_dist_map_contrast = if isfile("discord_dist_map_contrast.bson")
-        ColorDistMap("discord_dist_map_contrast.bson")
+        ColorDistMap("discord_dist_map_contrast.bson", identity, no_distance)
     else
         _map = ColorDistMap(identity, contrast_ratio)
         println("Computing contrast ratio discord color map.")

@@ -16,7 +16,15 @@ struct ColorDistMap
     distance  # The function used to compute the distance between colors.
     ColorDistMap(f = default_f, distance = colordiff) = new(fill(Inf64, 256, 256, 256), f, distance)
     ColorDistMap(a::Array{Float64, 3}, f = default_f, distance = colordiff) = new(a, f, distance)
-    ColorDistMap(path::String) = BSON.load(path)[:color_dist_map]
+    function ColorDistMap(path::String, f = default_f, distance = colordiff)
+        loaded = BSON.load(path)[:color_dist_map]
+        #=
+        if isnothing(f) && isnothing(distance)
+            return loaded
+        end
+        =#
+        new(loaded.array, f, distance)
+    end
 end
 
 Base.Broadcast.broadcastable(map::ColorDistMap) = Ref(map)
